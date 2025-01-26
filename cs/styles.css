@@ -1,18 +1,83 @@
 /*Estos estilos son para arreglar los botones de tema e idioma en mobil y ahora las notificaciones tambien xD*/
 @media screen and (max-width: 768px) {
-    .toggle-btn {
-        position: fixed;
+    
+        position: absolute;
+        top: 50%;
         z-index: 10;
         background: var(--background-light);
         box-shadow: var(--shadow-md);
     }
+
+ header {
+      display: flex; /* Activa Flexbox */
+      justify-content: flex-start; /* Alinea los botones a la izquierda */
+      align-items: center; /* Alineación vertical */
+      padding: 10px 20px;
+    }
+
+    .changeBtn {
+        position: relative; 
+        top: 2%;
+        left: 63%;
+    }
+
+    adminScreen {
+        overflow-y: auto;
+    }
+   
+   /* /////////////////////////////////////////////////////////////////////////  */ 
+     #offlinePopup {
+      display: none; 
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 300px;
+      padding: 20px;
+      background-color: #f44336; 
+      color: white;
+      text-align: center;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      z-index: 1000;
+    }
+
+    .back-to-menu {
+      position: fixed;
+      bottom: 20px; 
+      left: 1%; 
+      top: 1%;
+      background-color: #333;
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+      transition: background-color 0.3s;
+    }
+
+    .back-to-menu:hover {
+      background-color: #555; 
+    }
+
+    /* arrow */
+    .back-to-menu::after {
+      content: '←'; 
+    }
+
     
     .dark-theme .toggle-btn {
         background: var(--background-dark);
     }
     
     .screen.active {
-        padding-top: 120px; /* Make room for the floating buttons */
+        padding-block:0% 20%
     }
      .admin-header {
         margin-left: 50px;
@@ -48,6 +113,7 @@
         font-size: 16px !important;
     }
 }
+
 .screen {
     width: 100%;
     max-width: 600px;
@@ -297,10 +363,8 @@ textarea {
 .admin-header .btn-secondary {
     margin-left: auto; /* Add this line */
 }
-/* Styles for language and theme buttons */
+
 .toggle-btn {
-    position: fixed;
-    right: 20px;
     padding: 10px 15px;
     background: rgba(59, 130, 246, 0.2);
     border: 2px solid var(--primary-color);
@@ -355,7 +419,7 @@ textarea {
 }
 /* New CSS for menu button positioning */
 #menuToggleBtn {
-    position: fixed;
+    
     left: 20px;
     top: 20px;
     z-index: 999;
@@ -603,15 +667,15 @@ body {
 /* Container Layouts */
 .admin-container {
     width: 100%;
-    max-width: 1200px;
-    margin: 0 auto;
+    max-width: 100%;
+    margin: 0 0;
     padding: var(--spacing-md);
     min-height: 100vh;
-    padding-bottom: 120px;
-    overflow-y: auto;
+    padding-bottom: 0%;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
-    height: 100vh;
-    position: relative;
+    height: 100%;
+    position: fixed;
 }
 .container {
     width: 100%;
@@ -631,10 +695,21 @@ body {
     padding: var(--spacing-lg);
     box-shadow: var(--shadow-lg);
     position: relative;
-    overflow: hidden;
-    margin: 16px 0;
+    margin: 5% 0;
+    right: 0%;
 }
 
+.card1 {
+    background: linear-gradient(145deg, #ffffff, #f9fafb);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: var(--spacing-lg);
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    margin: 0% 0;
+    right: 0%;
+    overflow-y: scroll;
+}
 .dark-theme .card {
     background: #2d2d2d;
     border-color: #4a5568;

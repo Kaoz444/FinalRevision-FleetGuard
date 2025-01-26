@@ -15,17 +15,18 @@
     <!-- Styles -->
     <link rel="stylesheet" href="cs/styles.css">
 </head>
+<header>
+    <div class="changeBtn">
+        <button id="languageToggleBtn" class="toggle-btn language-toggle" onclick="toggleLanguage()">
+            <span data-lang="en" style="display: none;">🇺🇸 EN</span>
+            <span data-lang="es">🇲🇽 ES</span>
+        </button>
+        <button class="toggle-btn theme-toggle" onclick="toggleTheme()">🌓</button>
+    </div>
+</header>
 <body>
     <!-- Notification Container -->
     <div id="customNotification" class="custom-notification"></div>
-
-    <!-- Global Controls -->
-    <button id="languageToggleBtn" class="toggle-btn language-toggle" onclick="toggleLanguage()">
-    <span data-lang="en" style="display: none;">🇺🇸 EN</span>
-    <span data-lang="es">🇲🇽 ES</span>
-    </button>
-    <button class="toggle-btn theme-toggle" onclick="toggleTheme()">🌓</button>
-
     <!-- Login Screen -->
     <div id="loginScreen" class="screen container">
         <div class="card">
@@ -42,6 +43,8 @@
                        pattern="(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,12}" 
                        required>
             </div>
+        </div>
+    <div>
             <button class="btn" onclick="login()">
                 <span data-lang="en">Login</span>
                 <span data-lang="es">Iniciar Sesión</span>
@@ -52,15 +55,15 @@
             </button>
         </div>
     </div>
-
-    <!-- Truck ID Screen -->
-    <div id="truckIdScreen" class="screen container">
+     <div id="truckIdScreen" class="screen container">
         <div class="card">
             <h2 class="title">
+                <button class="back-to-menu" onclick="goToMenu()"></button>
                 <span data-lang="en">Enter Truck ID</span>
                 <span data-lang="es">Ingrese ID del Camion</span>
             </h2>
             <div class="input-group">
+                
                 <input type="text" id="truckId" 
                        placeholder="Truck ID / ID del Camión" 
                        pattern="[A-Z0-9]{4}" 
@@ -75,7 +78,7 @@
 
     <!-- Inspection Screen -->
     <div id="inspectionScreen" class="screen container">
-        <div class="card">
+        <div class="card1">
             <div class="progress-container">
                 <div class="progress-bar" id="progressBar"></div>
             </div>
@@ -134,7 +137,7 @@
     </button>
 </div>
     <div id="adminScreen" class="screen admin-container">
-        <div class="card">
+        <div class="card1">
             <h2 class="title">Admin Dashboard</h2>
             <div class="stats-grid">
                 <div class="stat-card">
@@ -172,7 +175,7 @@
     </div>
 <!-- Records Screen -->
 <div id="recordsScreen" class="screen container">
-    <div class="card">
+    <div class="card1">
         <h2 class="title">
             <span data-lang="en">Recent Inspections</span>
             <span data-lang="es">Inspecciones Recientes</span>
@@ -246,7 +249,7 @@
     </div>
 <!-- Metrics Screen -->
 <div id="metricsScreen" class="screen admin-container">
-    <div class="card">
+    <div class="card1">
         <h2 class="title">Metrics Dashboard</h2>
         <div class="metrics-grid">
                     <div class="metric-card">
@@ -312,7 +315,7 @@
 </div>
     <!-- New Records Screen HTML -->
     <div id="recordsScreen" class="screen container">
-    <div class="card">
+    <div class="card1">
         <div class="admin-header">
             <h2 class="title">
                 <span data-lang="en">Recent Inspections</span>

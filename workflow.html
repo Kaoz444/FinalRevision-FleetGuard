@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <title>FleetGuard - Inspeccion de Vehiculos</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#3b82f6">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="format-detection" content="telephone=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <!-- External Libraries -->
+    <script src="https://unpkg.com/jspdf@latest/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Styles -->
+    <link rel="stylesheet" href="cs/styles.css">
+</head>
+<body>
+  
+    <!-- Notification Container -->
+    <div id="customNotification" class="custom-notification"></div>
+    <!-- Truck ID Screen -->
+    <div id="truckIdScreen" class="screen container">
+        <div class="card">
+            <h2 class="title">
+                <span data-lang="en">Enter Truck ID</span>
+                <span data-lang="es">Ingrese ID del Camion</span>
+            </h2>
+            <div class="input-group">
+                <input type="text" id="truckId" 
+                       placeholder="Truck ID / ID del Camión" 
+                       pattern="[A-Z0-9]{4}" 
+                       required>
+            </div>
+            <button class="btn" onclick="startInspection()">
+                <span data-lang="en">Start Inspection</span>
+                <span data-lang="es">Iniciar Inspección</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Inspection Screen -->
+    <div id="inspectionScreen" class="screen container">
+        <div class="card">
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            <div id="currentName" class="title"></div>
+            <div id="currentDescription"></div>
+            <!-- Botones de estado -->
+            <div class="status-selector">
+                <button class="status-btn status-ok" data-status="ok">
+                    <span data-lang="en">OK</span>
+                    <span data-lang="es">OK</span>
+                </button>
+                <button class="status-btn status-warning" data-status="warning">
+                    <span data-lang="en">Warning</span>
+                    <span data-lang="es">Precaución</span>
+                </button>
+                <button class="status-btn status-critical" data-status="critical">
+                    <span data-lang="en">Critical</span>
+                    <span data-lang="es">Crítico</span>
+                </button>
+            </div>
+
+            <div class="comment-box">
+                <textarea id="commentBox" 
+                         placeholder="Add comments... / Agrega comentarios..." 
+                         oninput="updateCharCount()" 
+                         minlength="30" 
+                         maxlength="150"></textarea>
+                <div id="charCount">0/150</div>
+                <button class="btn btn-secondary" id="addPhotoBtn" onclick="openCamera()">
+                    <span data-lang="en">Take Photo</span>
+                    <span data-lang="es">Tomar Fotografía</span>
+                </button>
+                <div id="imageLoadingSpinner" class="loading-spinner"></div>
+                <img id="photoPreview" style="max-width: 100%; margin-top: 10px; display: none;" loading="lazy">
+            </div>
+
+            <div class="nav-buttons">
+                <button class="btn" onclick="previousItem()" id="prevButton">
+                    <span data-lang="en">Previous</span>
+                    <span data-lang="es">Anterior</span>
+                </button>
+                <button class="btn" onclick="nextItem()" id="nextButton" disabled>
+                    <span data-lang="en">Next</span>
+                    <span data-lang="es">Siguiente</span>
+                </button>
+            </div>
+        </div>
+    </div>
+<!-- Admin Dashboard -->
+    <!-- Add after the admin dashboard title -->
+<div class="admin-header">
+    <!--<h2 class="title">Admin Dashboard</h2>-->
+    <button class="btn btn-secondary" onclick="backToLogin()">
+        <span data-lang="en">Back to Login</span>
+        <span data-lang="es">Volver al Inicio</span>
+    </button>
+</div>
+    <div id="adminScreen" class="screen admin-container">
+        <div class="card">
+            <h2 class="title">Admin Dashboard</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Inspections</h3>
+                    <p id="totalInspections">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Critical Issues</h3>
+                    <p id="criticalIssues">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Active Vehicles</h3>
+                    <p id="activeVehicles">0</p>
+                </div>
+            </div>
+
+            <div class="recent-inspections">
+                <h3>Recent Inspections</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Inspector</th>
+                                <th>Vehicle</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentInspectionsTable"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- Records Screen -->
+<div id="recordsScreen" class="screen container">
+    <div class="card">
+        <h2 class="title">
+            <span data-lang="en">Recent Inspections</span>
+            <span data-lang="es">Inspecciones Recientes</span>
+        </h2>
+        <div id="recordsContainer" class="records-container"></div>
+    </div>
+</div>
+    <!-- User Management Screen -->
+    <div id="userManagementScreen" class="screen admin-container">
+        <div class="card">
+            <h2 class="title">User Management</h2>
+            <div class="user-controls">
+                <button class="btn btn-secondary" onclick="showAddUserForm()">Add User</button>
+                <input type="text" id="userSearchInput" 
+                       placeholder="Search users..." 
+                       onkeyup="filterUsers()" 
+                       class="search-input">
+            </div>
+
+            <div class="table-container">
+                <table class="user-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Last Activity</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="userTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Sidebar -->
+    <button id="menuToggleBtn" onclick="toggleSidebar()" style="display: none;">☰</button>
+    <div id="adminSidebar" class="sidebar">
+        <button class="close-btn" onclick="toggleSidebar()">×</button>
+        <h3>Admin Menu</h3>
+        <ul>
+            <li onclick="showMetrics()">Metrics</li>
+            <li onclick="showUserManagement()">User Management</li>
+            <li onclick="showInspectionRecords()">Inspection Records</li>
+            <li onclick="showSettings()">Settings</li>
+        </ul>
+    </div>
+
+    <!-- User Modal -->
+    <div id="userModal" class="modal">
+        <div class="modal-content">
+            <span class="close-modal" onclick="closeUserModal()">&times;</span>
+            <h3 id="modalTitle">Add User</h3>
+            <form id="userForm" onsubmit="handleUserSubmit(event)">
+                <div class="input-group">
+                    <input type="text" id="userId" placeholder="User ID" required>
+                    <input type="text" id="userName" placeholder="Full Name" required>
+                    <select id="userRole" required>
+                        <option value="">Select Role</option>
+                        <option value="admin">Administrator</option>
+                        <option value="user">User</option>
+                        <option value="auditor">Auditor</option>
+                    </select>
+                    <input type="password" id="userPassword" placeholder="Password" required>
+                </div>
+                <button type="submit" class="btn">Save</button>
+            </form>
+        </div>
+    </div>
+<!-- Metrics Screen -->
+<div id="metricsScreen" class="screen admin-container">
+    <div class="card">
+        <h2 class="title">Metrics Dashboard</h2>
+        <div class="metrics-grid">
+                    <div class="metric-card">
+                        <h3>Average Inspection Time</h3>
+                        <p class="metric-value" id="averageTimeValue">--</p>
+                            </div>
+                            <div class="metric-card">
+                        <h3>Inspection Times by Inspector</h3>
+                        <div class="chart-container">
+                            <canvas id="inspectionTimesChart"></canvas>
+                        </div>
+                </div>
+            <div class="metric-card">
+                <h3>Weekly Inspections</h3>
+                <div id="weeklyInspectionsChart" class="chart-container"></div>
+            </div>
+            <div class="metric-card">
+                <h3>Issue Distribution</h3>
+                <div id="issueDistributionChart" class="chart-container"></div>
+            </div>
+            <div class="metric-card">
+                <h3>Inspector Performance</h3>
+                <div id="inspectorPerformanceChart" class="chart-container"></div>
+            </div>
+            <div class="metric-card">
+                <h3>Fleet Overall Condition</h3>
+                <p class="metric-value" id="fleetConditionValue">--</p>
+                <div class="chart-container">
+                    <canvas id="fleetConditionChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    <!-- New Settings Screen HTML -->
+<div id="settingsScreen" class="screen admin-container">
+    <div class="card">
+        <h2 class="title">Settings</h2>
+        <div class="settings-grid">
+            <div class="settings-section">
+                <h3>Application Settings</h3>
+                <div class="setting-item">
+                    <label>Default Language</label>
+                    <select id="defaultLanguage" onchange="updateDefaultLanguage(this.value)">
+                        <option value="en">English</option>
+                        <option value="es">Spanish</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Theme Preference</label>
+                    <select id="themePreference" onchange="updateThemePreference(this.value)">
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <label>Auto-save Frequency (minutes)</label>
+                    <input type="number" id="autoSaveInterval" min="1" max="60" value="5">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+    <!-- New Records Screen HTML -->
+    <div id="recordsScreen" class="screen container">
+    <div class="card">
+        <div class="admin-header">
+            <h2 class="title">
+                <span data-lang="en">Recent Inspections</span>
+                <span data-lang="es">Inspecciones Recientes</span>
+            </h2>
+            <div class="records-controls">
+                <input type="text" id="recordSearchInput" placeholder="Search records..." class="search-input">
+                <select id="recordFilterStatus" class="filter-select">
+                    <option value="all">All Status</option>
+                    <option value="critical">Critical</option>
+                    <option value="warning">Warning</option>
+                    <option value="ok">OK</option>
+                </select>
+                <button class="btn btn-secondary" onclick="exportRecords()">
+                    <span data-lang="en">Export CSV</span>
+                    <span data-lang="es">Exportar CSV</span>
+                </button>
+            </div>
+        </div>
+        <div id="recordsContainer" class="records-container"></div>
+        <div class="pagination-controls">
+            <button id="prevPage" class="btn btn-secondary">←</button>
+            <span id="pageInfo">Page 1 of 1</span>
+            <button id="nextPage" class="btn btn-secondary">→</button>
+        </div>
+    </div>
+</div>
+    <!-- Scripts -->
+    <script src="scripts.js"></script>
+</body>
+</html>
