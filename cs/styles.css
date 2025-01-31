@@ -1,3 +1,17 @@
+/*Estilos para la foto preview*/
+#photoPreviewContainer {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px; /* Espacio entre imágenes */
+    justify-content: center;
+    margin-top: 25px; /* Mayor separación del botón */
+}
+
+#photoPreviewContainer img {
+    max-width: 120px; /* Tamaño de las imágenes en miniatura */
+    border-radius: 8px; /* Bordes redondeados */
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); /* Sombra ligera */
+}
 /* Base styles for all screen sizes */
 .mobile-controls {
     position: fixed;
