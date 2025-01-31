@@ -20,16 +20,11 @@
     <div id="customNotification" class="custom-notification"></div>
 
     <!-- Global Controls -->
-    <button id="languageToggleBtn" class="toggle-btn language-toggle" onclick="toggleLanguage()">
-    <span data-lang="en" style="display: none;">🇺🇸 EN</span>
-    <span data-lang="es">🇲🇽 ES</span>
-    </button>
-    <button class="toggle-btn theme-toggle" onclick="toggleTheme()">🌓</button>
 
     <!-- Login Screen -->
     <div id="loginScreen" class="screen container">
         <div class="card">
-            <h1 class="title">FleetGuard V 3.1.7</h1>
+            <h1 class="title">FleetGuard V 3.4.8</h1>
             <div class="input-group">
                 <input type="text" id="workerId" 
                        placeholder="Worker ID / ID de Trabajador" 
@@ -125,13 +120,20 @@
         </div>
     </div>
 <!-- Admin Dashboard -->
-    <!-- Add after the admin dashboard title -->
 <div class="admin-header">
-    <!--<h2 class="title">Admin Dashboard</h2>-->
-    <button class="btn btn-secondary" onclick="backToLogin()">
-        <span data-lang="en">Back to Login</span>
-        <span data-lang="es">Volver al Inicio</span>
+<div class="mobile-controls">
+    <button class="toggle-btn logout-btn" onclick="backToLogin()">
+        <span data-lang="en">Exit</span>
+        <span data-lang="es">Salir</span>
     </button>
+    <div class="nav-controls">
+        <button class="toggle-btn language-toggle" onclick="toggleLanguage()">
+            <span data-lang="en" style="display: none;">🇺🇸 EN</span>
+            <span data-lang="es">🇲🇽 ES</span>
+        </button>
+        <button class="toggle-btn theme-toggle" onclick="toggleTheme()">🌓</button>
+    </div>
+</div>
 </div>
     <div id="adminScreen" class="screen admin-container">
         <div class="card">
@@ -169,17 +171,37 @@
                 </div>
             </div>
         </div>
-    </div>
-<!-- Records Screen -->
-<div id="recordsScreen" class="screen container">
-    <div class="card">
-        <h2 class="title">
-            <span data-lang="en">Recent Inspections</span>
-            <span data-lang="es">Inspecciones Recientes</span>
-        </h2>
-        <div id="recordsContainer" class="records-container"></div>
-    </div>
-</div>
+    </div><!-- Termina la pantalla principal de administradores -->
+        <!-- Nueva pantalla Records Screen -->
+        <div id="recordsScreen" class="screen container">
+            <div class="card">
+                <div class="admin-header">
+                    <h2 class="title">
+                        <span data-lang="en">Recent Inspections</span>
+                        <span data-lang="es">Inspecciones Recientes</span>
+                    </h2>
+                    <div class="records-controls">
+                        <input type="text" id="recordSearchInput" placeholder="Search records..." class="search-input">
+                        <select id="recordFilterStatus" class="filter-select">
+                            <option value="all">All Status</option>
+                            <option value="critical">Critical</option>
+                            <option value="warning">Warning</option>
+                            <option value="ok">OK</option>
+                        </select>
+                        <button class="btn btn-secondary" onclick="exportRecords()">
+                            <span data-lang="en">Export CSV</span>
+                            <span data-lang="es">Exportar CSV</span>
+                        </button>
+                    </div>
+                </div>
+                <div id="recordsContainer" class="records-container"></div>
+                <div class="pagination-controls">
+                    <button id="prevPage" class="btn btn-secondary">←</button>
+                    <span id="pageInfo">Page 1 of 1</span>
+                    <button id="nextPage" class="btn btn-secondary">→</button>
+                </div>
+            </div>
+        </div> <!-- Termina nueva pantalla de registros -->
     <!-- User Management Screen -->
     <div id="userManagementScreen" class="screen admin-container">
         <div class="card">
@@ -208,7 +230,7 @@
                 </table>
             </div>
         </div>
-    </div>
+    </div><!-- Termina la pantalla de administracion de usuarios -->
 
     <!-- Admin Sidebar -->
     <button id="menuToggleBtn" onclick="toggleSidebar()" style="display: none;">☰</button>
@@ -221,29 +243,50 @@
             <li onclick="showInspectionRecords()">Inspection Records</li>
             <li onclick="showSettings()">Settings</li>
         </ul>
-    </div>
-
-    <!-- User Modal -->
-    <div id="userModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeUserModal()">&times;</span>
-            <h3 id="modalTitle">Add User</h3>
-            <form id="userForm" onsubmit="handleUserSubmit(event)">
-                <div class="input-group">
-                    <input type="text" id="userId" placeholder="User ID" required>
-                    <input type="text" id="userName" placeholder="Full Name" required>
+    </div><!-- Termina la barra lateral -->
+<!-- User Modal -->
+<div id="userModal" class="modal">
+    <div class="modal-content">
+        <span class="close-modal" onclick="closeUserModal()">&times;</span>
+        <h3 id="modalTitle">Add User</h3>
+        <form id="userForm" onsubmit="handleUserSubmit(event)">
+            <div class="input-group">
+                <div class="form-field">
+                    <input type="text" id="userId" placeholder="User ID" 
+                           pattern="\d{4,6}" 
+                           title="ID must be 4-6 digits" required>
+                    <small class="hint">ID must be 4-6 digits</small>
+                </div>
+                <div class="form-field">
+                    <input type="text" id="userName" placeholder="Full Name" 
+                           pattern="[A-Za-z\s]{3,50}" 
+                           title="Name must be 3-50 characters long, letters only" required>
+                    <small class="hint">Full name, letters only</small>
+                </div>
+                <div class="form-field">
+                    <input type="email" id="userEmail" placeholder="Email" required>
+                    <small class="hint">Valid email address</small>
+                </div>
+                <div class="form-field">
                     <select id="userRole" required>
                         <option value="">Select Role</option>
                         <option value="admin">Administrator</option>
                         <option value="user">User</option>
                         <option value="auditor">Auditor</option>
                     </select>
-                    <input type="password" id="userPassword" placeholder="Password" required>
+                    <small class="hint">Select user role</small>
                 </div>
-                <button type="submit" class="btn">Save</button>
-            </form>
-        </div>
+                <div class="form-field">
+                    <input type="password" id="userPassword" placeholder="Password" 
+                           pattern="(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,12}"
+                           title="Password must be 6-12 characters with at least one letter and one number" required>
+                    <small class="hint">6-12 chars, at least 1 letter and 1 number</small>
+                </div>
+            </div>
+            <button type="submit" class="btn">Save</button>
+        </form>
     </div>
+</div><!-- Termina carta modal de administracion de usuarios -->
 <!-- Metrics Screen -->
 <div id="metricsScreen" class="screen admin-container">
     <div class="card">
@@ -280,7 +323,7 @@
             </div>
         </div>
     </div>
-</div>
+</div> <!-- Termina pantalla de metricas -->
     <!-- New Settings Screen HTML -->
 <div id="settingsScreen" class="screen admin-container">
     <div class="card">
@@ -310,36 +353,7 @@
         </div>
     </div>
 </div>
-    <!-- New Records Screen HTML -->
-    <div id="recordsScreen" class="screen container">
-    <div class="card">
-        <div class="admin-header">
-            <h2 class="title">
-                <span data-lang="en">Recent Inspections</span>
-                <span data-lang="es">Inspecciones Recientes</span>
-            </h2>
-            <div class="records-controls">
-                <input type="text" id="recordSearchInput" placeholder="Search records..." class="search-input">
-                <select id="recordFilterStatus" class="filter-select">
-                    <option value="all">All Status</option>
-                    <option value="critical">Critical</option>
-                    <option value="warning">Warning</option>
-                    <option value="ok">OK</option>
-                </select>
-                <button class="btn btn-secondary" onclick="exportRecords()">
-                    <span data-lang="en">Export CSV</span>
-                    <span data-lang="es">Exportar CSV</span>
-                </button>
-            </div>
-        </div>
-        <div id="recordsContainer" class="records-container"></div>
-        <div class="pagination-controls">
-            <button id="prevPage" class="btn btn-secondary">←</button>
-            <span id="pageInfo">Page 1 of 1</span>
-            <button id="nextPage" class="btn btn-secondary">→</button>
-        </div>
-    </div>
-</div>
+<!-- Termina las nuevas configuraciones -->
     <!-- Scripts -->
     <script src="scripts.js"></script>
 </body>
