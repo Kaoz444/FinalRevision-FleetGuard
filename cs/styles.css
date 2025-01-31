@@ -1,3 +1,11 @@
+/* Estilos dinamicos para el boton de desloggeo */
+.logout-btn {
+    display: none; /* Hidden by default */
+}
+
+.logged-in .logout-btn {
+    display: block; /* Show only when logged in */
+}
 /*Estilos para la foto preview*/
 #photoPreviewContainer {
     display: flex;
