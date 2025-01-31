@@ -631,11 +631,14 @@ function updateInspectionDisplay() {
         return;
     }
 
+    // Recuperar datos actuales del ítem o establecer valores por defecto
     const currentData = currentInspectionData[item.id] || { comment: '', photos: [], status: null };
 
+    // Actualizar elementos de la UI
     document.getElementById('currentName').textContent = `${item.icon} ${item.name[currentLanguage]}`;
     document.getElementById('currentDescription').textContent = item.description[currentLanguage];
 
+    // Actualizar caja de comentarios
     const commentBox = document.getElementById('commentBox');
     if (commentBox) {
         commentBox.value = currentData.comment || '';
@@ -643,15 +646,28 @@ function updateInspectionDisplay() {
 
     updateCharCount();
 
-    // LIMPIAR EL CONTENEDOR DE FOTOS ANTES DE ACTUALIZARLO
+    // Limpiar el contenedor de fotos antes de actualizarlo
     const photoContainer = document.getElementById('photoPreviewContainer');
     if (photoContainer) {
         photoContainer.innerHTML = ''; // Borra todas las fotos previas
     }
 
-    // Mostrar las fotos del ítem actual
+    // Mostrar vista previa de la última foto si hay fotos disponibles
+    const photoPreview = document.getElementById('photoPreview');
+    if (photoPreview) {
+        photoPreview.src = '';
+        photoPreview.style.display = 'none';
+
+        if (currentData.photos && currentData.photos.length > 0) {
+            photoPreview.src = currentData.photos[currentData.photos.length - 1];
+            photoPreview.style.display = 'block';
+        }
+    }
+
+    // Mostrar todas las fotos del ítem actual
     updatePhotoPreview(item.id);
 }
+
 
 /*function updateInspectionDisplay() {
     const item = inspectionItems[currentIndex];
@@ -686,8 +702,8 @@ function updateInspectionDisplay() {
             photoPreview.src = currentData.photos[currentData.photos.length - 1];
             photoPreview.style.display = 'block';
         }
-    }*/
-
+    }
+}*/
     // Reset all status buttons and highlight the saved one if exists
     document.querySelectorAll('.status-btn').forEach(button => {
         button.classList.remove('active');
