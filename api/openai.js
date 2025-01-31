@@ -125,7 +125,7 @@
     }
 }*/
 // In openai.js, replace the existing handler with this updated version:
-export default async function handler(req, res) {
+/*export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Método no permitido' });
     }
@@ -237,4 +237,126 @@ export default async function handler(req, res) {
             details: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
+}*/
+export default async function handler(req, res) {
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Método no permitido' });
+    }
+
+    const { prompt, image } = req.body;
+
+    if (!prompt || !image) {
+        return res.status(400).json({ error: 'Se requieren el prompt y la imagen' });
+    }
+
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            },
+            body: JSON.stringify({
+                model: 'gpt-4-vision-preview', // Modelo actualizado
+                messages: [
+                    {
+                        role: 'system',
+                        content: `Eres una IA que analiza componentes de vehículos basándote en condiciones predefinidas. 
+                                  Siempre devuelve tu análisis utilizando uno de los estados y problemas predefinidos.`
+                    },
+                    {
+                        role: 'user',
+                        content: [
+                            { 
+                                type: 'text', 
+                                text: `Analiza este componente: ${prompt}` 
+                            },
+                            {
+                                type: 'image_url',
+                                url: `data:image/jpeg;base64,${image}`
+                            }
+                        ]
+                    }
+                ],
+                functions: [
+                    {
+                        name: "analyze_vehicle_component",
+                        description: "Analiza un componente de vehículo y devuelve un resultado estructurado",
+                        parameters: {
+                            type: "object",
+                            properties: {
+                                component: { type: "string" },
+                                status: { 
+                                    type: "string",
+                                    enum: [
+                                        "Condición óptima",
+                                        "Leve desgaste",
+                                        "Desgaste moderado",
+                                        "Requiere reparación menor",
+                                        "Requiere reparación urgente",
+                                        "No funcional",
+                                        "Llanta ponchada"
+                                    ]
+                                },
+                                issues: {
+                                    type: "array",
+                                    items: {
+                                        type: "string",
+                                        enum: [
+                                            "No presenta problemas",
+                                            "Daño cosmético menor",
+                                            "Daño estructural",
+                                            "Problema funcional",
+                                            "Conexión floja",
+                                            "Falta de ajuste adecuado",
+                                            "Acumulación de suciedad",
+                                            "Pérdida total de presión",
+                                            "Objeto punzante visible"
+                                        ]
+                                    }
+                                }
+                            },
+                            required: ["component", "status", "issues"]
+                        }
+                    }
+                ],
+                function_call: { name: "analyze_vehicle_component" },
+                max_tokens: 150
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`HTTP error: ${response.status}, Details: ${errorText}`);
+            throw new Error(`HTTP error: ${response.status} - ${errorText}`);
+        }
+
+        const data = await response.json();
+
+        if (!data.choices || !data.choices[0]?.message?.function_call) {
+            throw new Error('Respuesta inválida de OpenAI');
+        }
+
+        try {
+            const result = JSON.parse(data.choices[0].message.function_call.arguments);
+            
+            // Validar la estructura de la respuesta
+            if (!result.component || !result.status || !Array.isArray(result.issues)) {
+                throw new Error('Estructura de respuesta inválida');
+            }
+
+            return res.status(200).json({ result });
+        } catch (parseError) {
+            console.error('Error parsing OpenAI response:', parseError);
+            throw new Error('Error al procesar la respuesta de OpenAI');
+        }
+
+    } catch (error) {
+        console.error('Error in OpenAI handler:', error);
+        return res.status(500).json({ 
+            error: error.message,
+            details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+        });
+    }
 }
+
