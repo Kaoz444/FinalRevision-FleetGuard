@@ -703,7 +703,7 @@ function updateInspectionDisplay() {
             photoPreview.style.display = 'block';
         }
     }
-}*/
+}
     // Reset all status buttons and highlight the saved one if exists
     document.querySelectorAll('.status-btn').forEach(button => {
         button.classList.remove('active');
@@ -714,7 +714,7 @@ function updateInspectionDisplay() {
 
     // Validate next button if necessary
     validateNextButton(currentData.comment?.length || 0, 30, 150);
-}
+}*/
 // Add overall condition
 function calculateOverallCondition(inspectionData) {
     if (!inspectionData || Object.keys(inspectionData).length === 0) {
