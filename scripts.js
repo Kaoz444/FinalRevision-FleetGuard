@@ -1499,6 +1499,76 @@ async function openCamera() {
     const item = inspectionItems[currentIndex];
     const requiredPhotos = item.requiredPhotos || 0;
 
+    if (requiredPhotos === 0) {
+        showNotification(`El ítem "${item.name[currentLanguage]}" no requiere fotos.`, 'info');
+        return;
+    }
+
+    if (!currentInspectionData[item.id]) {
+        currentInspectionData[item.id] = { photos: [] };
+    } else if (!currentInspectionData[item.id].photos) {
+        currentInspectionData[item.id].photos = [];
+    }
+
+    if (currentInspectionData[item.id].photos.length >= requiredPhotos) {
+        showNotification('Ya se han tomado todas las fotos requeridas.', 'warning');
+        return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+
+    input.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+
+        if (!file) return;
+
+        const processedImage = await handleImageProcessing(file);
+        if (!processedImage) {
+            showNotification('Error al procesar la imagen', 'error');
+            return;
+        }
+
+        // ✅ SOLUCIÓN: Agregamos la nueva foto a la lista en lugar de reemplazarla
+        currentInspectionData[item.id].photos.push(processedImage);
+
+        // Mostrar todas las fotos en la UI
+        updatePhotoPreview(item.id);
+
+        showNotification(`Foto ${currentInspectionData[item.id].photos.length} de ${requiredPhotos} guardada.`, 'info');
+    });
+
+    input.click();
+}
+
+function updatePhotoPreview(itemId) {
+    const photoContainer = document.getElementById('photoPreviewContainer'); 
+    if (!photoContainer) return;
+
+    // Limpiar la vista previa
+    photoContainer.innerHTML = '';
+
+    // Obtener la lista de fotos
+    const photos = currentInspectionData[itemId]?.photos || [];
+
+    // Agregar cada imagen a la vista previa
+    photos.forEach((photoUrl, index) => {
+        const img = document.createElement('img');
+        img.src = photoUrl;
+        img.style.maxWidth = '100px';
+        img.style.marginRight = '5px';
+        img.setAttribute('alt', `Foto ${index + 1}`);
+
+        photoContainer.appendChild(img);
+    });
+}
+
+/*async function openCamera() {
+    const item = inspectionItems[currentIndex];
+    const requiredPhotos = item.requiredPhotos || 0;
+
     // Si no se requieren fotos, notificar y avanzar al siguiente ítem
     if (requiredPhotos === 0) {
         showNotification(`El ítem \"${item.name[currentLanguage]}\" no requiere fotos.`, 'info');
@@ -1587,7 +1657,7 @@ async function openCamera() {
     });
 
     input.click();
-}
+}*/
 /*async function openCamera() {
     const item = inspectionItems[currentIndex];
     const requiredPhotos = item.requiredPhotos || 0;
