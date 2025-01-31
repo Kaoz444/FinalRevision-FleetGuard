@@ -1504,6 +1504,99 @@ async function openCamera() {
         showNotification(`El ítem \"${item.name[currentLanguage]}\" no requiere fotos.`, 'info');
         return;
     }
+
+    // Inicializar el array de fotos si no existe
+    if (!currentInspectionData[item.id]) {
+        currentInspectionData[item.id] = { photos: [] };
+    } else if (!currentInspectionData[item.id].photos) {
+        currentInspectionData[item.id].photos = [];
+    }
+
+    // Verificar si ya tenemos todas las fotos requeridas
+    if (currentInspectionData[item.id].photos.length >= requiredPhotos) {
+        showNotification('Ya se han tomado todas las fotos requeridas.', 'warning');
+        return;
+    }
+
+    // Evitar múltiples aperturas rápidas de la cámara
+    if (Date.now() - lastCaptureTime < 1000) {
+        console.log('Preventing multiple rapid camera opens');
+        return;
+    }
+
+    lastCaptureTime = Date.now();
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.multiple = false; // Changed to false to handle one photo at a time
+
+    input.addEventListener('change', async (event) => {
+        const files = Array.from(event.target.files);
+        
+        if (!files.length) {
+            console.log('No se seleccionaron archivos');
+            return;
+        }
+
+        try {
+            const file = files[0]; // Process only one file at a time
+            
+            // Validar el tamaño de la imagen
+            if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                showNotification('La imagen es demasiado grande. Máximo 5MB.', 'error');
+                return;
+            }
+
+            // Procesar la imagen usando handleImageProcessing
+            const processedImage = await handleImageProcessing(file);
+            if (!processedImage) {
+                showNotification('Error al procesar la imagen', 'error');
+                return;
+            }
+
+            // Guarda la imagen procesada en el ítem actual
+            currentInspectionData[item.id].photos.push(processedImage);
+
+            // Actualiza la vista previa de la foto
+            const photoPreview = document.getElementById('photoPreview');
+            if (photoPreview) {
+                photoPreview.src = processedImage;
+                photoPreview.style.display = 'block';
+            }
+
+            // Limpiar memoria después de cada foto
+            cleanupMemory();
+
+            // Show progress
+            const currentPhotos = currentInspectionData[item.id].photos.length;
+            if (currentPhotos >= requiredPhotos) {
+                showNotification('Se han cargado todas las fotos requeridas.', 'success');
+            } else {
+                showNotification(
+                    `Foto ${currentPhotos} de ${requiredPhotos} guardada. Faltan ${requiredPhotos - currentPhotos} fotos.`,
+                    'info'
+                );
+            }
+
+        } catch (error) {
+            console.error('Error al procesar la imagen:', error);
+            showNotification('Error al procesar la imagen.', 'error');
+        }
+    });
+
+    input.click();
+}
+/*async function openCamera() {
+    const item = inspectionItems[currentIndex];
+    const requiredPhotos = item.requiredPhotos || 0;
+
+    // Si no se requieren fotos, notificar y avanzar al siguiente ítem
+    if (requiredPhotos === 0) {
+        showNotification(`El ítem \"${item.name[currentLanguage]}\" no requiere fotos.`, 'info');
+        return;
+    }
  	// Inicializar el array de fotos si no existe
     if (!currentInspectionData[item.id]) {
         currentInspectionData[item.id] = { photos: [] };
@@ -1590,7 +1683,7 @@ async function openCamera() {
     });
 
     input.click();
-}
+}*/
 /*async function openCamera() {
     const item = inspectionItems[currentIndex];
     const requiredPhotos = item.requiredPhotos || 0;
