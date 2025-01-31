@@ -311,7 +311,7 @@ async function login() {
 
         // Guardar en localStorage para persistencia
         localStorage.setItem('currentWorker', JSON.stringify(currentWorker));
-
+	document.body.classList.add('logged-in');
         // Mostrar bienvenida al usuario
         showNotification(`Welcome, ${currentWorker.name}!`, 'success');
 
@@ -825,7 +825,66 @@ function updateProgressBar() {
         progressBar.style.width = `${progress}%`;
     }
 }
+/*funcion para seleccionar y guardar el boton de estado*/
 function setItemStatus(status) {
+    // Set the current status
+    currentItemStatus = status;
+
+    // Get all status buttons and the clicked one
+    const buttons = document.querySelectorAll('.status-btn');
+    buttons.forEach(button => {
+        button.classList.remove('active');
+        if (button.getAttribute('data-status') === status) {
+            button.classList.add('active');
+        }
+    });
+
+    // Save item state in currentInspectionData
+    const item = inspectionItems[currentIndex];
+    if (!currentInspectionData[item.id]) {
+        currentInspectionData[item.id] = {};
+    }
+    
+    currentInspectionData[item.id] = {
+        ...currentInspectionData[item.id],
+        status: status,
+        comment: document.getElementById('commentBox')?.value || '',
+        photo: document.getElementById('photoPreview')?.src || null
+    };
+
+    // Update character count and validate next button
+    updateCharCount();
+    validateNextButton();
+}
+/*funcion para verificar los requerimientos*/
+function checkRequirements() {
+    const item = inspectionItems[currentIndex];
+    const currentData = currentInspectionData[item.id] || {};
+    const comment = document.getElementById('commentBox')?.value || '';
+    const photoCount = currentData.photos?.length || 0;
+    const requiredPhotos = item.requiredPhotos || 0;
+    const status = currentData.status;
+
+    let missingItems = [];
+
+    if (!status) {
+        missingItems.push('Select a status (OK/Warning/Critical)');
+    }
+    if (comment.length < 30) {
+        missingItems.push('Add a comment (minimum 30 characters)');
+    }
+    if (photoCount < requiredPhotos) {
+        missingItems.push(`Take ${requiredPhotos - photoCount} more photo${requiredPhotos - photoCount > 1 ? 's' : ''}`);
+    }
+
+    if (missingItems.length > 0) {
+        showNotification('Missing requirements:\n' + missingItems.join('\n'), 'warning');
+        return false;
+    }
+
+    return true;
+}
+/*function setItemStatus(status) {
     // Set the current status
     currentItemStatus = status;
 
@@ -858,7 +917,7 @@ function setItemStatus(status) {
 
     // Update character count and validate next button
     updateCharCount();
-}
+}*/
 
 
 // Add event listeners to status buttons
@@ -1338,6 +1397,114 @@ async function completeInspection() {
             throw new Error('Invalid condition object. Missing properties.');
         }
 
+        // Obtener información del camión
+        const truckInfo = await getTruckInfo(truckId);
+        const model = truckInfo?.model || 'N/A';
+        const year = truckInfo?.year || 'N/A';
+
+        // Crear el registro de inspección
+        const inspectionRecord = {
+            worker: currentWorker.name,
+            worker_id: currentWorker.id,
+            truck_id: truckId,
+            model: model,
+            year: year,
+            start_time: inspectionStartTime.toISOString(),
+            end_time: inspectionEndTime.toISOString(),
+            duration: duration,
+            overall_condition: condition.score || null,
+            critical_count: condition.criticalCount || 0,
+            warning_count: condition.warningCount || 0,
+            date: new Date().toLocaleString(),
+            data: { ...currentInspectionData },
+        };
+
+        console.log('Inspection record before saving:', inspectionRecord);
+
+        // Generar el PDF de la inspección
+        const pdfUrl = await generateInspectionPDF(inspectionRecord);
+        inspectionRecord.pdf_url = pdfUrl;
+
+        // **Limpieza de memoria después de generar el PDF**
+        cleanupMemory();
+
+        // **Modo Demo: No guardar en base de datos**
+        if (currentWorker.id === '000') {
+            console.warn('Modo demo: No se guardará en la base de datos.');
+            showNotification('Modo demo: PDF generado, pero no se guardará la inspección.', 'info');
+
+            // Mostrar enlace al PDF en pantalla
+            const pdfLinkContainer = document.getElementById('pdfLinkContainer');
+            if (pdfLinkContainer) {
+                pdfLinkContainer.innerHTML = `<a href="${pdfUrl}" target="_blank">Descargar PDF de Inspección</a>`;
+                pdfLinkContainer.style.display = 'block';
+            }
+            showScreen('recordsScreen');
+            return;
+        }
+
+        // Crear los datos para guardar en el backend o localStorage
+        const inspectionData = {
+            ...inspectionRecord,
+            status: 'completed',
+            dynamic_status:
+                inspectionRecord.critical_count > 0
+                    ? 'critical'
+                    : inspectionRecord.warning_count > 0
+                    ? 'warning'
+                    : 'ok',
+            created_at: new Date().toISOString(),
+        };
+
+        console.log('Inspection data sent to backend:', inspectionData);
+
+        // Guardar la inspección en el backend
+        const response = await fetch('/api/saveInspection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(inspectionData),
+        });
+
+        if (!response.ok) throw new Error('Failed to save inspection');
+
+        // Actualizar los registros locales
+        if (!Array.isArray(window.records)) {
+            window.records = [];
+        }
+        window.records.push({ ...inspectionRecord, pdfUrl });
+        localStorage.setItem('inspectionRecords', JSON.stringify(window.records));
+
+        // Notificar y cambiar de pantalla
+        showNotification('Inspection completed and saved successfully', 'success');
+        showScreen('recordsScreen');
+        displayRecords();
+    } catch (error) {
+        console.error('Error completing inspection:', error);
+        showNotification('Error saving inspection', 'error');
+    }
+}
+
+/*async function completeInspection() {
+    try {
+        const inspectionEndTime = new Date();
+        const duration = (inspectionEndTime - inspectionStartTime) / 1000;
+        const truckId = document.getElementById('truckId')?.value?.trim();
+
+        // Validaciones iniciales
+        if (!inspectionStartTime) {
+            throw new Error('Inspection start time is not defined.');
+        }
+
+        if (!currentInspectionData || Object.keys(currentInspectionData).length === 0) {
+            throw new Error('Inspection data is empty or undefined.');
+        }
+
+        // Calcular la condición general
+        const condition = calculateOverallCondition(currentInspectionData);
+        if (!condition || typeof condition.score === 'undefined') {
+            throw new Error('Invalid condition object. Missing properties.');
+        }
+
         // Obtener información adicional del camión (si es necesario)
         const truckInfo = await getTruckInfo(truckId); // Implementar esta función si aún no existe
         const model = truckInfo?.model || 'N/A';
@@ -1419,7 +1586,7 @@ async function completeInspection() {
         console.error('Error completing inspection:', error);
         showNotification('Error saving inspection', 'error');
     }
-}
+}*/
 
 /*async function completeInspection() {
     try {
@@ -1522,8 +1689,38 @@ async function completeInspection() {
     }
 }*/
 
-
+/*funcion para validar el boton de Siguiente Item*/
 function validateNextButton(charCount, minCharLimit, maxCharLimit) {
+    const nextButton = document.getElementById('nextButton');
+    if (!nextButton) return;
+
+    // Obtener el ítem actual y sus datos
+    const item = inspectionItems[currentIndex];
+    const currentData = currentInspectionData[item.id] || {};
+    const comment = document.getElementById('commentBox')?.value || '';
+    const photoCount = currentData.photos?.length || 0;
+    const requiredPhotos = item?.requiredPhotos || 0;
+
+    // Validar condiciones
+    const isValid = 
+        currentData.status && 
+        charCount >= minCharLimit && 
+        charCount <= maxCharLimit && 
+        comment.length >= 30 && 
+        comment.length <= 150 && 
+        (requiredPhotos === 0 || photoCount >= requiredPhotos);
+
+    // Actualizar estado del botón
+    nextButton.disabled = !isValid;
+    if (!isValid) {
+        nextButton.classList.add('disabled');
+        checkRequirements();
+    } else {
+        nextButton.classList.remove('disabled');
+    }
+}
+
+/*function validateNextButton(charCount, minCharLimit, maxCharLimit) {
     const nextButton = document.getElementById('nextButton');
 
     // Verificar si el ítem actual tiene fotos suficientes
@@ -1546,7 +1743,7 @@ function validateNextButton(charCount, minCharLimit, maxCharLimit) {
         nextButton.classList.add('disabled');
         nextButton.disabled = true;
     }
-}
+}*/
 function updateCharCount() {
     const commentBox = document.getElementById('commentBox');
     const charCountDisplay = document.getElementById('charCount');
@@ -3308,7 +3505,7 @@ function backToLogin() {
         document.querySelectorAll('.screen').forEach(screen => {
             screen.style.display = 'none';
         });
-        
+        document.body.classList.remove('logged-in');
         // Show login screen
         showScreen('loginScreen');
         
