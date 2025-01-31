@@ -138,7 +138,33 @@ const notificationMessages = {
 };
 
 // Initialize Application
-function initializeApp() {
+function backToLogin() {
+    if (confirm('Are you sure you want to logout?')) {
+        currentWorker = null;
+
+        // Ocultar el botón de logout
+        document.querySelector('.logout-btn')?.classList.add('hidden');
+
+        // Ocultar el menú de administrador
+        const menuBtn = document.getElementById('menuToggleBtn');
+        const sidebar = document.getElementById('adminSidebar');
+        if (menuBtn) menuBtn.style.display = 'none';
+        if (sidebar) sidebar.classList.remove('open');
+        
+        // Resetear cualquier pantalla abierta
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.style.display = 'none';
+        });
+
+        // Mostrar la pantalla de login
+        showScreen('loginScreen');
+        
+        // Limpiar cualquier dato almacenado
+        localStorage.removeItem('currentWorker');
+    }
+}
+
+/*function initializeApp() {
     try {
         // Load saved data
         loadSavedData();
@@ -158,7 +184,7 @@ function initializeApp() {
         console.error('Error initializing app:', error);
         showNotification('Error initializing application', 'error');
     }
-}
+}*/
 
 function loadSavedData() {
     try {
@@ -263,11 +289,83 @@ async function login() {
         } else {
             showScreen('truckIdScreen');
         }
+
+        // **Agregar esto después del login exitoso**
+        document.querySelector('.logout-btn')?.classList.remove('hidden');
+
     } catch (error) {
         console.error('Login error:', error); // Más detalle en la consola
         handleError(error, 'login'); // Reutilizar la función de manejo de errores
     }
 }
+
+/*async function login() {
+    try {
+        const workerId = document.getElementById('workerId')?.value?.trim();
+        const password = document.getElementById('workerPassword')?.value?.trim();
+
+        if (!workerId || !password) {
+            throw new Error('Please fill in both fields');
+        }
+
+        console.log('Data sent to API:', { workerId, password });
+
+        // Autenticación en el backend
+        const response = await fetch('/api/auth', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workerId, password }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || 'Invalid credentials');
+        }
+
+        // Asignar el usuario autenticado a currentWorker
+        currentWorker = data.user; // Variable global
+
+        console.log('Authenticated user:', currentWorker);
+
+        // Guardar en localStorage para persistencia
+        localStorage.setItem('currentWorker', JSON.stringify(currentWorker));
+
+        // Mostrar bienvenida al usuario
+        showNotification(`Welcome, ${currentWorker.name}!`, 'success');
+
+        // Cerrar todos los modales
+        document.querySelectorAll('.modal').forEach(modal => {
+            modal.style.display = 'none';
+        });
+
+        // Ocultar pantallas actuales
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.style.display = 'none';
+            screen.classList.remove('active');
+        });
+
+        // Actualizar último inicio de sesión en el backend
+        await fetch('/api/updateLastLogin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ workerId: currentWorker.id }),
+        });
+
+        // Validar y navegar según el rol del usuario
+        if (!['admin', 'user'].includes(currentWorker.role)) {
+            throw new Error('Invalid role assigned to user');
+        }
+
+        if (currentWorker.role === 'admin') {
+            showAdminDashboard();
+        } else {
+            showScreen('truckIdScreen');
+        }
+    } catch (error) {
+        console.error('Login error:', error); // Más detalle en la consola
+        handleError(error, 'login'); // Reutilizar la función de manejo de errores
+    }
+}*/
 
 function startDemoMode() {
     currentWorker = { 
@@ -1085,6 +1183,112 @@ async function completeInspection() {
 
         console.log('Inspection record before saving:', inspectionRecord);
 
+        // Generar el PDF de la inspección con manejo de errores en los comentarios de IA
+        const pdfUrl = await generateInspectionPDF({
+            ...inspectionRecord,
+            aiComment: typeof inspectionRecord.aiComment === 'string' && !inspectionRecord.aiComment.includes('error')
+                ? inspectionRecord.aiComment
+                : 'No AI analysis available'
+        });
+        inspectionRecord.pdf_url = pdfUrl;
+
+        // Crear los datos para guardar en el backend o localStorage
+        const inspectionData = {
+            worker_id: inspectionRecord.worker_id,
+            truck_id: inspectionRecord.truck_id,
+            model: inspectionRecord.model,
+            year: inspectionRecord.year,
+            start_time: inspectionRecord.start_time,
+            end_time: inspectionRecord.end_time,
+            duration: inspectionRecord.duration,
+            overall_condition: inspectionRecord.overall_condition,
+            pdf_url: inspectionRecord.pdf_url,
+            critical_count: inspectionRecord.critical_count,
+            warning_count: inspectionRecord.warning_count,
+            date: inspectionRecord.date,
+            status: 'completed',
+            dynamic_status:
+                inspectionRecord.critical_count > 0
+                    ? 'critical'
+                    : inspectionRecord.warning_count > 0
+                    ? 'warning'
+                    : 'ok',
+            created_at: new Date().toISOString(),
+        };
+
+        console.log('Inspection data sent to backend:', inspectionData);
+
+        // Guardar la inspección en el backend
+        const response = await fetch('/api/saveInspection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(inspectionData),
+        });
+
+        if (!response.ok) throw new Error('Failed to save inspection');
+
+        // Actualizar los registros locales
+        if (!Array.isArray(window.records)) {
+            window.records = [];
+        }
+        window.records.push({ ...inspectionRecord, pdfUrl });
+        localStorage.setItem('inspectionRecords', JSON.stringify(window.records));
+
+        // Notificar y cambiar de pantalla
+        showNotification('Inspection completed and saved successfully', 'success');
+        showScreen('recordsScreen');
+        displayRecords();
+    } catch (error) {
+        console.error('Error completing inspection:', error);
+        showNotification('Error saving inspection', 'error');
+    }
+}
+
+/*async function completeInspection() {
+    try {
+        const inspectionEndTime = new Date();
+        const duration = (inspectionEndTime - inspectionStartTime) / 1000;
+        const truckId = document.getElementById('truckId')?.value?.trim();
+
+        // Validaciones iniciales
+        if (!inspectionStartTime) {
+            throw new Error('Inspection start time is not defined.');
+        }
+
+        if (!currentInspectionData || Object.keys(currentInspectionData).length === 0) {
+            throw new Error('Inspection data is empty or undefined.');
+        }
+
+        // Calcular la condición general
+        const condition = calculateOverallCondition(currentInspectionData);
+        if (!condition || typeof condition.score === 'undefined') {
+            throw new Error('Invalid condition object. Missing properties.');
+        }
+
+        // Obtener información adicional del camión (si es necesario)
+        const truckInfo = await getTruckInfo(truckId); // Implementar esta función si aún no existe
+        const model = truckInfo?.model || 'N/A';
+        const year = truckInfo?.year || 'N/A';
+
+        // Crear el registro de inspección
+        const inspectionRecord = {
+            worker: currentWorker.name,
+            worker_id: currentWorker.id,
+            truck_id: truckId,
+            model: model,
+            year: year,
+            start_time: inspectionStartTime.toISOString(),
+            end_time: inspectionEndTime.toISOString(),
+            duration: duration,
+            overall_condition: condition.score || null,
+            critical_count: condition.criticalCount || 0,
+            warning_count: condition.warningCount || 0,
+            date: new Date().toLocaleString(),
+            data: { ...currentInspectionData },
+        };
+
+        console.log('Inspection record before saving:', inspectionRecord);
+
         // Generar el PDF de la inspección
         const pdfUrl = await generateInspectionPDF(inspectionRecord);
         inspectionRecord.pdf_url = pdfUrl;
@@ -1139,7 +1343,7 @@ async function completeInspection() {
         console.error('Error completing inspection:', error);
         showNotification('Error saving inspection', 'error');
     }
-}
+}*/
 
 
 function validateNextButton(charCount, minCharLimit, maxCharLimit) {
@@ -2610,8 +2814,34 @@ function showNotification(message, type = 'success') {
         notification.classList.remove('show');
     }, 3000);
 }
-// New function for handling back to login
+// Funcion para volver a la pagina de inicio
 function backToLogin() {
+    if (confirm('Are you sure you want to logout?')) {
+        currentWorker = null;
+
+        // Ocultar el botón de logout
+        document.querySelector('.logout-btn')?.classList.add('hidden');
+
+        // Ocultar el menú de administrador
+        const menuBtn = document.getElementById('menuToggleBtn');
+        const sidebar = document.getElementById('adminSidebar');
+        if (menuBtn) menuBtn.style.display = 'none';
+        if (sidebar) sidebar.classList.remove('open');
+        
+        // Resetear cualquier pantalla abierta
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.style.display = 'none';
+        });
+
+        // Mostrar la pantalla de login
+        showScreen('loginScreen');
+        
+        // Limpiar cualquier dato almacenado
+        localStorage.removeItem('currentWorker');
+    }
+}
+
+/*function backToLogin() {
     if (confirm('Are you sure you want to logout?')) {
         currentWorker = null;
         // Hide admin menu
@@ -2631,7 +2861,7 @@ function backToLogin() {
         // Clear any stored data
         localStorage.removeItem('currentWorker');
     }
-}
+}*/
 // Initialize records screen events
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('recordSearchInput');
