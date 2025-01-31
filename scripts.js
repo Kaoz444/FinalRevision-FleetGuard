@@ -983,7 +983,7 @@ async function nextItem() {
         };
         advanceToNextItem();
         return;
-    }*/
+    }
 
     // Validar si se han cargado las fotos requeridas antes de avanzar
     if (currentPhotos.length < requiredPhotos) {
