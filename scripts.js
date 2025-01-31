@@ -1,4 +1,6 @@
 // Core Variables
+const MAX_PHOTOS_PER_ITEM = 3;
+const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 let currentLanguage = 'es';
 let currentTheme = 'light';
 let currentWorker = null;
@@ -12,7 +14,59 @@ let currentPage = 1;
 let workers = {};
 const recordsPerPage = 10;
 //declarada al inicio para evitar errores
+//Funcion para el manejo de las fotos y optimizacion
 async function handleImageProcessing(file) {
+    if (!file) {
+        console.error('No file provided');
+        return null;
+    }
+
+    const photoPreview = document.getElementById('photoPreview');
+    const spinner = document.getElementById('imageLoadingSpinner');
+
+    try {
+        if (spinner) spinner.style.display = 'block';
+        if (photoPreview) photoPreview.classList.add('processing');
+
+        // Process and compress the image with smaller dimensions
+        const processedImage = await compressImage(file, 800, 600, 0.6);
+
+        // Clean up old preview if it exists
+        if (photoPreview?.src) {
+            URL.revokeObjectURL(photoPreview.src);
+        }
+
+        // Update UI
+        if (photoPreview) {
+            photoPreview.src = processedImage;
+            photoPreview.style.display = 'block';
+            photoPreview.classList.remove('processing');
+        }
+
+        return processedImage;
+
+    } catch (error) {
+        console.error('Error processing image:', error);
+        showNotification('Error al procesar la imagen', 'error');
+        return null;
+    } finally {
+        if (spinner) spinner.style.display = 'none';
+        if (photoPreview) photoPreview.classList.remove('processing');
+    }
+}
+function updatePhotoPreview(photoUrl) {
+    const photoPreview = document.getElementById('photoPreview');
+    if (!photoPreview) return;
+
+    // Clean up old preview
+    if (photoPreview.src) {
+        URL.revokeObjectURL(photoPreview.src);
+    }
+
+    photoPreview.src = photoUrl;
+    photoPreview.style.display = 'block';
+}
+/*async function handleImageProcessing(file) {
     if (!file) {
         console.error('No file provided');
         return null;
@@ -45,7 +99,7 @@ async function handleImageProcessing(file) {
         if (spinner) spinner.style.display = 'none';
         if (photoPreview) photoPreview.classList.remove('processing');
     }
-}
+}*/
 //event listeners
 function initializeLoginButtons() {
     const loginBtn = document.querySelector('.btn:not(.btn-secondary)');
@@ -753,8 +807,39 @@ function initializeStatusButtons() {
         });
     });
 }
-
 async function nextItem() {
+    console.log('nextItem fue llamado');
+
+    // Obtener el ítem actual y detalles necesarios
+    const item = inspectionItems[currentIndex];
+    const requiredPhotos = item.requiredPhotos ?? 1; // Fotos requeridas, por defecto 1
+    const currentPhotos = currentInspectionData[item.id]?.photos || []; // Fotos actuales
+    const comment = document.getElementById('commentBox')?.value.trim() || ''; // Comentario del inspector
+
+    console.log('Current inspection item:', JSON.stringify(item, null, 2));
+    console.log('Required photos:', requiredPhotos);
+    console.log('Current photos count:', currentPhotos.length);
+
+    // Caso especial: Si no se requieren fotos, avanzar directamente
+    if (requiredPhotos === 0) {
+        console.log(`El ítem "${item.name[currentLanguage]}" no requiere fotos, avanzando...`);
+        currentInspectionData[item.id] = {
+            ...currentInspectionData[item.id],
+            comment: comment,
+            status: currentItemStatus,
+            timestamp: new Date().toISOString(),
+            aiComment: 'No se requiere análisis de IA para este ítem.',
+        };
+
+        // **Limpieza de memoria después de guardar los datos**
+        cleanupMemory();
+
+        advanceToNextItem();
+        return;
+    }
+}
+
+/*async function nextItem() {
     console.log('nextItem fue llamado');
 
     // Obtener el ítem actual y detalles necesarios
@@ -779,7 +864,7 @@ async function nextItem() {
         };
         advanceToNextItem();
         return;
-    }
+    }*/
 
     // Validar si se han cargado las fotos requeridas antes de avanzar
     if (currentPhotos.length < requiredPhotos) {
@@ -1089,6 +1174,9 @@ async function completeInspection() {
         const pdfUrl = await generateInspectionPDF(inspectionRecord);
         inspectionRecord.pdf_url = pdfUrl;
 
+        // **Limpieza de memoria después de generar el PDF**
+        cleanupMemory();
+
         // Crear los datos para guardar en el backend o localStorage
         const inspectionData = {
             worker_id: inspectionRecord.worker_id,
@@ -1141,6 +1229,107 @@ async function completeInspection() {
     }
 }
 
+/*async function completeInspection() {
+    try {
+        const inspectionEndTime = new Date();
+        const duration = (inspectionEndTime - inspectionStartTime) / 1000;
+        const truckId = document.getElementById('truckId')?.value?.trim();
+
+        // Validaciones iniciales
+        if (!inspectionStartTime) {
+            throw new Error('Inspection start time is not defined.');
+        }
+
+        if (!currentInspectionData || Object.keys(currentInspectionData).length === 0) {
+            throw new Error('Inspection data is empty or undefined.');
+        }
+
+        // Calcular la condición general
+        const condition = calculateOverallCondition(currentInspectionData);
+        if (!condition || typeof condition.score === 'undefined') {
+            throw new Error('Invalid condition object. Missing properties.');
+        }
+
+        // Obtener información adicional del camión (si es necesario)
+        const truckInfo = await getTruckInfo(truckId); // Implementar esta función si aún no existe
+        const model = truckInfo?.model || 'N/A';
+        const year = truckInfo?.year || 'N/A';
+
+        // Crear el registro de inspección
+        const inspectionRecord = {
+            worker: currentWorker.name,
+            worker_id: currentWorker.id,
+            truck_id: truckId,
+            model: model,
+            year: year,
+            start_time: inspectionStartTime.toISOString(),
+            end_time: inspectionEndTime.toISOString(),
+            duration: duration,
+            overall_condition: condition.score || null,
+            critical_count: condition.criticalCount || 0,
+            warning_count: condition.warningCount || 0,
+            date: new Date().toLocaleString(),
+            data: { ...currentInspectionData },
+        };
+
+        console.log('Inspection record before saving:', inspectionRecord);
+
+        // Generar el PDF de la inspección
+        const pdfUrl = await generateInspectionPDF(inspectionRecord);
+        inspectionRecord.pdf_url = pdfUrl;
+
+        // Crear los datos para guardar en el backend o localStorage
+        const inspectionData = {
+            worker_id: inspectionRecord.worker_id,
+            truck_id: inspectionRecord.truck_id,
+            model: inspectionRecord.model,
+            year: inspectionRecord.year,
+            start_time: inspectionRecord.start_time,
+            end_time: inspectionRecord.end_time,
+            duration: inspectionRecord.duration,
+            overall_condition: inspectionRecord.overall_condition,
+            pdf_url: inspectionRecord.pdf_url,
+            critical_count: inspectionRecord.critical_count,
+            warning_count: inspectionRecord.warning_count,
+            date: inspectionRecord.date,
+            status: 'completed',
+            dynamic_status:
+                inspectionRecord.critical_count > 0
+                    ? 'critical'
+                    : inspectionRecord.warning_count > 0
+                    ? 'warning'
+                    : 'ok',
+            created_at: new Date().toISOString(),
+        };
+
+        console.log('Inspection data sent to backend:', inspectionData);
+
+        // Guardar la inspección en el backend
+        const response = await fetch('/api/saveInspection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(inspectionData),
+        });
+
+        if (!response.ok) throw new Error('Failed to save inspection');
+
+        // Actualizar los registros locales
+        if (!Array.isArray(window.records)) {
+            window.records = [];
+        }
+        window.records.push({ ...inspectionRecord, pdfUrl });
+        localStorage.setItem('inspectionRecords', JSON.stringify(window.records));
+
+        // Notificar y cambiar de pantalla
+        showNotification('Inspection completed and saved successfully', 'success');
+        showScreen('recordsScreen');
+        displayRecords();
+    } catch (error) {
+        console.error('Error completing inspection:', error);
+        showNotification('Error saving inspection', 'error');
+    }
+}*/
+
 
 function validateNextButton(charCount, minCharLimit, maxCharLimit) {
     const nextButton = document.getElementById('nextButton');
@@ -1188,6 +1377,102 @@ function updateCharCount() {
 }
 // Image Processing and Camera Functions
 async function openCamera() {
+    const item = inspectionItems[currentIndex];
+    const requiredPhotos = item.requiredPhotos || 0;
+
+    // Si no se requieren fotos, notificar y avanzar al siguiente ítem
+    if (requiredPhotos === 0) {
+        showNotification(`El ítem \"${item.name[currentLanguage]}\" no requiere fotos.`, 'info');
+        return;
+    }
+ 	// Inicializar el array de fotos si no existe
+    if (!currentInspectionData[item.id]) {
+        currentInspectionData[item.id] = { photos: [] };
+    } else if (!currentInspectionData[item.id].photos) {
+        currentInspectionData[item.id].photos = [];
+    }
+
+    // Verificar si ya tenemos todas las fotos requeridas
+    if (currentInspectionData[item.id].photos.length >= requiredPhotos) {
+        showNotification('Ya se han tomado todas las fotos requeridas.', 'warning');
+        return;
+    }
+
+    // Evitar múltiples aperturas rápidas de la cámara
+    if (Date.now() - lastCaptureTime < 1000) {
+        console.log('Preventing multiple rapid camera opens');
+        return;
+    }
+
+    lastCaptureTime = Date.now();
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.multiple = true; // Permitir seleccionar múltiples fotos
+
+    input.addEventListener('change', async (event) => {
+        const files = Array.from(event.target.files);
+        const remainingPhotos = requiredPhotos - currentInspectionData[item.id].photos.length;
+        const filesToProcess = files.slice(0, remainingPhotos);
+
+        if (!filesToProcess.length) {
+            console.log('No se seleccionaron archivos');
+            return;
+        }
+
+        for (let file of filesToProcess) {
+            try {
+                // Validar el tamaño de la imagen
+                if (file.size > 5 * 1024 * 1024) { // 5MB limit
+                    showNotification('La imagen es demasiado grande. Máximo 5MB.', 'error');
+                    continue;
+                }
+
+                // Procesar la imagen usando handleImageProcessing
+                const processedImage = await handleImageProcessing(file);
+                if (!processedImage) {
+                    showNotification('Error al procesar la imagen', 'error');
+                    return;
+                }
+
+                // Guarda la imagen procesada en el ítem actual
+                currentInspectionData[item.id].photos.push(processedImage);
+
+                showNotification('Foto procesada y cargada exitosamente.', 'success');
+
+                // Actualiza la vista previa de la foto
+                const photoPreview = document.getElementById('photoPreview');
+                if (photoPreview) {
+                    photoPreview.src = processedImage;
+                    photoPreview.style.display = 'block';
+                }
+
+                // Limpiar memoria después de cada foto
+                cleanupMemory();
+
+            } catch (error) {
+                console.error('Error al procesar la imagen:', error);
+                showNotification('Error al procesar la imagen.', 'error');
+            }
+        }
+
+        // Validar si se alcanzó la cantidad de fotos requerida
+        const currentPhotos = currentInspectionData[item.id].photos.length;
+        if (currentPhotos >= requiredPhotos) {
+            showNotification('Se han cargado todas las fotos requeridas.', 'success');
+        } else {
+            showNotification(
+                `Faltan ${requiredPhotos - currentPhotos} fotos.`,
+                'warning'
+            );
+        }
+    });
+
+    input.click();
+}
+/*async function openCamera() {
     const item = inspectionItems[currentIndex];
     const requiredPhotos = item.requiredPhotos || 0;
 
@@ -1282,9 +1567,51 @@ async function openCamera() {
     });
 
     input.click();
-}
+}*/
+async function compressImage(file, maxWidth = 800, maxHeight = 600, quality = 0.6) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
 
-async function compressImage(file, maxWidth = 1280, maxHeight = 960, quality = 0.6) {
+                // Calculate new dimensions
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                // Convert to WebP with lower quality
+                const compressedImage = canvas.toDataURL('image/webp', quality);
+                
+                // Cleanup
+                canvas.width = 0;
+                canvas.height = 0;
+                URL.revokeObjectURL(img.src);
+                img.src = '';
+                resolve(compressedImage);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    });
+}
+/*async function compressImage(file, maxWidth = 1280, maxHeight = 960, quality = 0.6) {
     return new Promise((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -1325,7 +1652,7 @@ async function compressImage(file, maxWidth = 1280, maxHeight = 960, quality = 0
         };
         reader.readAsDataURL(file);
     });
-}
+}*/
 function cleanupCharts() {
   const chartIds = ['inspectionTimesChart', 'fleetConditionChart'];
   chartIds.forEach(id => {
