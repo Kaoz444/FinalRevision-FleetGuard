@@ -623,7 +623,37 @@ function resetInspection() {
     }
   cleanupImages();
 }
+//funcion para actualizar la pantalla de inspeccion
 function updateInspectionDisplay() {
+    const item = inspectionItems[currentIndex];
+    if (!item) {
+        console.error('Invalid inspection index');
+        return;
+    }
+
+    const currentData = currentInspectionData[item.id] || { comment: '', photos: [], status: null };
+
+    document.getElementById('currentName').textContent = `${item.icon} ${item.name[currentLanguage]}`;
+    document.getElementById('currentDescription').textContent = item.description[currentLanguage];
+
+    const commentBox = document.getElementById('commentBox');
+    if (commentBox) {
+        commentBox.value = currentData.comment || '';
+    }
+
+    updateCharCount();
+
+    // LIMPIAR EL CONTENEDOR DE FOTOS ANTES DE ACTUALIZARLO
+    const photoContainer = document.getElementById('photoPreviewContainer');
+    if (photoContainer) {
+        photoContainer.innerHTML = ''; // Borra todas las fotos previas
+    }
+
+    // Mostrar las fotos del ítem actual
+    updatePhotoPreview(item.id);
+}
+
+/*function updateInspectionDisplay() {
     const item = inspectionItems[currentIndex];
     if (!item) {
         console.error('Invalid inspection index');
@@ -656,7 +686,7 @@ function updateInspectionDisplay() {
             photoPreview.src = currentData.photos[currentData.photos.length - 1];
             photoPreview.style.display = 'block';
         }
-    }
+    }*/
 
     // Reset all status buttons and highlight the saved one if exists
     document.querySelectorAll('.status-btn').forEach(button => {
