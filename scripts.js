@@ -154,7 +154,7 @@ const inspectionItems = [
             en: 'Ensure both mirrors are properly aligned, clean, and free from damage.', 
             es: 'Asegúrese de que ambos espejos estén correctamente alineados, limpios y sin daños.' 
         },
-        requiredPhotos: 2  // Se requieren 2 fotos (espejo izquierdo y derecho)
+        requiredPhotos: 0  // Se requieren 2 fotos (espejo izquierdo y derecho)
     },
     { 
         id: 'license_plates', 
@@ -164,7 +164,7 @@ const inspectionItems = [
             en: 'Confirm that both plates are securely attached and clearly visible.', 
             es: 'Confirme que ambas placas estén firmemente sujetas y sean claramente visibles.' 
         },
-        requiredPhotos: 2  // Se requieren 2 fotos (placa delantera y trasera)
+        requiredPhotos: 0  // Se requieren 2 fotos (placa delantera y trasera)
     },
     { 
         id: 'cleanliness', 
