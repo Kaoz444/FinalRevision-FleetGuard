@@ -1093,7 +1093,7 @@ async function nextItem() {
         completeInspection();
     }
 }*/
-function advanceToNextItem() {
+/*function advanceToNextItem() {
     if (currentIndex < inspectionItems.length - 1) {
         console.log('Avanzando al siguiente ítem.');
         currentIndex++;
@@ -1106,7 +1106,34 @@ function advanceToNextItem() {
         console.log('Inspección completada.');
         completeInspection();
     }
+}*/
+function advanceToNextItem() {
+    if (currentIndex < inspectionItems.length - 1) {
+        console.log('Avanzando al siguiente ítem.');
+        currentIndex++;
+        updateInspectionDisplay();
+        updateProgressBar();
+        currentItemStatus = null; // Resetear el estado para el siguiente ítem
+
+        // Verificar si el elemento photoPreview existe antes de modificarlo
+        const photoPreview = document.getElementById('photoPreview');
+        if (photoPreview) {
+            photoPreview.style.display = 'none'; 
+            photoPreview.src = ''; 
+        }
+
+        // Verificar si el contenedor de imágenes existe y limpiarlo
+        const photoContainer = document.getElementById('photoPreviewContainer');
+        if (photoContainer) {
+            photoContainer.innerHTML = ''; // Limpiar imágenes previas
+        }
+
+    } else {
+        console.log('Inspección completada.');
+        completeInspection();
+    }
 }
+
 
 function previousItem() {
     if (currentIndex > 0) {
