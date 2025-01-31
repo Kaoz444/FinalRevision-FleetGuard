@@ -1,3 +1,7 @@
+/*css para esconder el boton de salir*/
+.hidden {
+    display: none !important;
+}
 /* Base styles for all screen sizes */
 .mobile-controls {
     position: fixed;
