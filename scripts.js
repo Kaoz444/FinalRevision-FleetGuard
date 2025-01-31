@@ -857,6 +857,99 @@ async function nextItem() {
             aiComment: 'No se requiere análisis de IA para este ítem.',
         };
 
+        // Limpieza de memoria después de guardar los datos
+        cleanupMemory();
+
+        advanceToNextItem();
+        return;
+    }
+
+    // Validar si se han cargado las fotos requeridas antes de avanzar
+    if (currentPhotos.length < requiredPhotos) {
+        const missingPhotos = requiredPhotos - currentPhotos.length;
+        console.warn(`Faltan ${missingPhotos} fotos para completar este ítem.`);
+        showNotification(`Faltan ${missingPhotos} fotos para completar este ítem.`, 'error');
+        return;
+    }
+
+    // Guardar los datos del ítem actual
+    currentInspectionData[item.id] = {
+        ...currentInspectionData[item.id],
+        comment: comment,
+        status: currentItemStatus,
+        timestamp: new Date().toISOString(),
+    };
+
+    // Procesar las fotos y comentarios con OpenAI si aplica
+    if (currentPhotos.length > 0 && comment.length >= 30) {
+        console.log('Llamando a OpenAI con fotos cargadas y comentario válido.');
+        try {
+            showNotification('Procesando imágenes con OpenAI...');
+
+            // Llamada a la función para analizar fotos
+            const aiComment = await analyzePhotoWithOpenAI(currentPhotos);
+
+            // Validar y formatear el comentario de IA
+            if (Array.isArray(aiComment)) {
+                console.log('AI Comment recibido como array:', aiComment);
+                const formattedAIComment = aiComment.map((comment, index) => `Imagen ${index + 1}: ${comment}`).join('\n');
+                currentInspectionData[item.id].aiComment = formattedAIComment;
+            } else if (typeof aiComment === 'string') {
+                console.log('AI Comment recibido como string:', aiComment);
+                currentInspectionData[item.id].aiComment = aiComment;
+            } else {
+                console.error('Formato inesperado del comentario de AI:', aiComment);
+                currentInspectionData[item.id].aiComment = 'Error: Formato inesperado del comentario de AI.';
+            }
+
+            console.log(`AI Comment added for ${item.name[currentLanguage]}:`, currentInspectionData[item.id].aiComment);
+            showNotification('Análisis de OpenAI completado.');
+        } catch (error) {
+            console.error('Error al procesar con OpenAI:', error);
+            showNotification('Error al procesar las imágenes con OpenAI.', 'error');
+            currentInspectionData[item.id].aiComment = 'Error al procesar las imágenes con OpenAI.';
+        }
+    } else {
+        console.log('No hay suficientes fotos o el comentario es insuficiente, se omite el envío a OpenAI.');
+        currentInspectionData[item.id].aiComment = 'No hay suficientes fotos o comentario válido.';
+    }
+
+    // Avanzar al siguiente ítem o completar la inspección
+    if (currentIndex < inspectionItems.length - 1) {
+        currentIndex++;
+        console.log(`Avanzando al siguiente ítem: ${inspectionItems[currentIndex].name[currentLanguage]}`);
+        updateInspectionDisplay();
+        updateProgressBar();
+        currentItemStatus = null; // Reiniciar el estado del ítem actual
+    } else {
+        console.log('Inspección completada.');
+        completeInspection();
+    }
+}
+/*async function nextItem() {
+    console.log('nextItem fue llamado');
+
+    // Obtener el ítem actual y detalles necesarios
+    const item = inspectionItems[currentIndex];
+    const requiredPhotos = item.requiredPhotos ?? 1; // Fotos requeridas, por defecto 1
+    const currentPhotos = currentInspectionData[item.id]?.photos || []; // Fotos actuales
+    const comment = document.getElementById('commentBox')?.value.trim() || ''; // Comentario del inspector
+
+    console.log('Current inspection item:', JSON.stringify(item, null, 2));
+    console.log('Required photos:', requiredPhotos);
+    console.log('Current photos count:', currentPhotos.length);
+
+    // Caso especial: Si no se requieren fotos, avanzar directamente
+    if (requiredPhotos === 0) {
+        console.log(`El ítem "${item.name[currentLanguage]}" no requiere fotos, avanzando...`);
+        currentInspectionData[item.id] = {
+            ...currentInspectionData[item.id],
+            comment: comment,
+            status: currentItemStatus,
+            timestamp: new Date().toISOString(),
+            aiComment: 'No se requiere análisis de IA para este ítem.',
+        };
+
         // **Limpieza de memoria después de guardar los datos**
         cleanupMemory();
 
@@ -953,7 +1046,7 @@ async function nextItem() {
         console.log('Inspección completada.');
         completeInspection();
     }
-}
+}*/
 function advanceToNextItem() {
     if (currentIndex < inspectionItems.length - 1) {
         console.log('Avanzando al siguiente ítem.');
