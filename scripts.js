@@ -1,6 +1,8 @@
 // Core Variables
 const MAX_PHOTOS_PER_ITEM = 3;
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
+const recordsPerPage = 10;
+
 let currentLanguage = 'es';
 let currentTheme = 'light';
 let currentWorker = null;
@@ -12,9 +14,33 @@ let inspectionStartTime = null;
 let inspectionEndTime = null;
 let currentPage = 1;
 let workers = {};
-const recordsPerPage = 10;
+
 //declarada al inicio para evitar errores
 //Funcion para el manejo de las fotos y optimizacion
+function cleanupMemory() {
+    // Cleanup image data
+    if (currentInspectionData[inspectionItems[currentIndex]?.id]?.photos) {
+        currentInspectionData[inspectionItems[currentIndex].id].photos = 
+            currentInspectionData[inspectionItems[currentIndex].id].photos.slice(-1);
+    }
+    
+    // Release old image URLs
+    const photoPreview = document.getElementById('photoPreview');
+    if (photoPreview?.src) {
+        URL.revokeObjectURL(photoPreview.src);
+        photoPreview.src = '';
+    }
+    
+    // Clear any cached data
+    if (window.records?.length > 50) {
+        window.records = window.records.slice(-50);
+    }
+    
+    // Force garbage collection hint
+    if (window.gc) window.gc();
+}
+
+// Your image processing functions
 async function handleImageProcessing(file) {
     if (!file) {
         console.error('No file provided');
@@ -3282,7 +3308,14 @@ function filterUsers() {
   console.log("filterUsers function called. Functionality to be implemented.");
   // Aquí agregarás la lógica para filtrar usuarios en el futuro
 }
-
+document.addEventListener('DOMContentLoaded', () => {
+    // Initialize all buttons and event handlers
+    initializeLoginButtons();
+    initializeStatusButtons();
+    initializeScrollBehavior();
+    updateLanguage();
+    setupEventListeners();
+});
 // Export functions to window
 Object.assign(window, {
     login,
@@ -3295,5 +3328,20 @@ Object.assign(window, {
     toggleLanguage,
     toggleTheme,
     showUserManagement,
-    toggleSidebar
+    toggleSidebar,
+    handleImageProcessing,
+    updatePhotoPreview
 });
+/*Object.assign(window, {
+    login,
+    startDemoMode,
+    showScreen,
+    startInspection,
+    previousItem,
+    nextItem,
+    openCamera,
+    toggleLanguage,
+    toggleTheme,
+    showUserManagement,
+    toggleSidebar
+});*/
