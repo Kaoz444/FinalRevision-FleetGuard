@@ -43,7 +43,7 @@ export default async function handler(req, res) {
                 'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
             },
             body: JSON.stringify({
-                model: 'gpt-4-vision-preview',  // Changed to vision model
+                model: 'gpt-4-turbo',  // Changed to vision model
                 messages: [
                     {
                         role: 'system',
