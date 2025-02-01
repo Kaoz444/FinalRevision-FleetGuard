@@ -1997,7 +1997,7 @@ async function displayUsers() {
         tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Loading users...</td></tr>';
         
         // Fetch workers from Supabase
-        const response = await fetch('/api/getWorkers');
+        const response = await fetch(`/api/getWorkers?id=${userId}`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
