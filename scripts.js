@@ -2375,18 +2375,27 @@ function showAddUserForm() {
 /*Funcion para editar a los usuarios dentro de la pantalla de admin*/
 async function editUser(userId) {
     try {
-        // Fetch user data
-        const response = await fetch(`/api/getWorkers?id=${userId}`);
+        // 🔹 Asegurar que userId es un string
+        userId = String(userId).trim();
+
+        console.log('Buscando usuario con ID:', userId);
+
+        // 🔹 Hacer la solicitud a la API
+        const response = await fetch(`/api/getWorkers?id=${encodeURIComponent(userId)}`);
         if (!response.ok) {
-            throw new Error('Failed to fetch user data');
+            throw new Error(`Failed to fetch user data: ${response.status}`);
         }
 
         const data = await response.json();
-        const user = data.worker; // Se accede correctamente a los datos de usuario
 
-        if (!user) {
+        console.log('Respuesta de la API:', data);
+
+        // 🔹 Verificar si data.worker existe
+        if (!data.worker) {
             throw new Error(`User with ID ${userId} not found`);
         }
+
+        const user = data.worker; // Extraer datos del usuario
 
         const elements = {
             modal: document.getElementById('userModal'),
@@ -2398,16 +2407,16 @@ async function editUser(userId) {
             password: document.getElementById('userPassword')
         };
 
-        // Update modal title and form
+        // 🔹 Actualizar los valores en el modal
         elements.title.textContent = 'Edit User';
         elements.id.value = user.id || ''; 
-        elements.id.readOnly = true; // ID shouldn't be editable
+        elements.id.readOnly = true; // ID no editable
         elements.name.value = user.name || ''; // Evita null/undefined
         elements.email.value = user.email || ''; // Evita null/undefined
-        elements.role.value = user.role || 'user'; // Si no tiene rol, por defecto será 'user'
+        elements.role.value = user.role || 'user'; // Valor por defecto
         elements.password.value = ''; // No mostrar la contraseña existente
 
-        // Show modal
+        // 🔹 Mostrar el modal
         elements.modal.style.display = 'block';
 
     } catch (error) {
@@ -2415,6 +2424,7 @@ async function editUser(userId) {
         showNotification('Error loading user data', 'error');
     }
 }
+
 /*function editUser(userId) {
     const user = workers[userId];
     if (!user) return;
