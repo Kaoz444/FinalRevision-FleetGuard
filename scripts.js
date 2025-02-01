@@ -792,7 +792,9 @@ function initializeStatusButtons() {
 }
 async function nextItem() {
     console.log('nextItem fue llamado');
-
+    if (!checkRequirements()) {
+        return;
+    }
     // Obtener el ítem actual y detalles necesarios
     const item = inspectionItems[currentIndex];
     const requiredPhotos = item.requiredPhotos ?? 1; // Fotos requeridas, por defecto 1
@@ -1314,7 +1316,7 @@ async function openCamera() {
             return;
         }
 
-        // ✅ SOLUCIÓN: Agregamos la nueva foto a la lista en lugar de reemplazarla
+        // Agregamos la nueva foto a la lista en lugar de reemplazarla
         currentInspectionData[item.id].photos.push(processedImage);
 
         // Mostrar todas las fotos en la UI
@@ -2294,8 +2296,44 @@ function showAddUserForm() {
     userForm.reset();
     userModal.style.display = 'block';
 }
+/*Funcion para editar a los usuarios dentro de la pantalla de admin*/
+async function editUser(userId) {
+    try {
+        // Fetch user data
+        const response = await fetch(`/api/getWorker?id=${userId}`);
+        if (!response.ok) {
+            throw new Error('Failed to fetch user data');
+        }
+        const user = await response.json();
 
-function editUser(userId) {
+        const elements = {
+            modal: document.getElementById('userModal'),
+            title: document.getElementById('modalTitle'),
+            id: document.getElementById('userId'),
+            name: document.getElementById('userName'),
+            email: document.getElementById('userEmail'),
+            role: document.getElementById('userRole'),
+            password: document.getElementById('userPassword')
+        };
+
+        // Update modal title and form
+        elements.title.textContent = 'Edit User';
+        elements.id.value = user.id;
+        elements.id.readOnly = true; // ID shouldn't be editable
+        elements.name.value = user.name;
+        elements.email.value = user.email;
+        elements.role.value = user.role;
+        elements.password.value = ''; // Don't show existing password
+
+        // Show modal
+        elements.modal.style.display = 'block';
+
+    } catch (error) {
+        console.error('Error editing user:', error);
+        showNotification('Error loading user data', 'error');
+    }
+}
+/*function editUser(userId) {
     const user = workers[userId];
     if (!user) return;
 
@@ -2314,7 +2352,7 @@ function editUser(userId) {
     elements.role.value = user.role;
     elements.password.value = user.password;
     elements.modal.style.display = 'block';
-}
+}*/
 //Funcion para crear usuarios a la base de datos
 async function handleUserSubmit(event) {
     event.preventDefault();
@@ -2686,30 +2724,41 @@ document.addEventListener('DOMContentLoaded', function() {
     updateLanguage();
     setupEventListeners();
 });
+//Funcion para bloquear el scroll en el login (es que se ven todas las pantallas XD)
 function initializeScrollBehavior() {
-    // Add scroll lock to login screen
     const loginScreen = document.getElementById('loginScreen');
-    
-    if (loginScreen && loginScreen.style.display === 'block') {
-        document.body.classList.add('login-screen');
-    }
-    
-    // Remove scroll lock when moving to other screens
-    document.querySelectorAll('.btn').forEach(button => {
-        button.addEventListener('click', () => {
+
+    if (!loginScreen) return; // Evita errores si no existe el loginScreen
+
+    // Función para bloquear/desbloquear el scroll
+    function toggleScrollLock(enable) {
+        if (enable) {
+            document.body.classList.add('login-screen');
+        } else {
             document.body.classList.remove('login-screen');
-        });
+        }
+    }
+
+    // Bloquear scroll si el login está visible
+    if (loginScreen.style.display === 'block') {
+        toggleScrollLock(true);
+    }
+
+    // Remover scroll lock cuando se navega a otras pantallas
+    document.querySelectorAll('.btn').forEach(button => {
+        button.addEventListener('click', () => toggleScrollLock(false));
     });
-    
-    // Re-add scroll lock when returning to login
+
+    // Volver a bloquear el scroll al regresar al login
     if (typeof backToLogin === 'function') {
         const originalBackToLogin = backToLogin;
         backToLogin = function() {
             originalBackToLogin();
-            document.body.classList.add('login-screen');
+            toggleScrollLock(true);
         };
     }
 }
+
 //error handler
 function handleError(error, context) {
     console.error(`Error in ${context}:`, error);
