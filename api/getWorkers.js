@@ -17,24 +17,30 @@ export default async function handler(req, res) {
 
     // Si se pasa un ID, filtramos la consulta
     if (id) {
-      query = query.eq('id', id).single(); // `.single()` devuelve solo un objeto en lugar de un array
+      query = query.eq('id', id);
     }
 
     const { data, error } = await query;
 
     if (error) {
-      console.error('Database query error:', error)
-      return res.status(500).json({ error: error.message })
+      console.error('Database query error:', error);
+      return res.status(500).json({ error: error.message });
     }
 
-    return res.status(200).json(id ? { worker: data } : { workers: data || [] });
+    if (id) {
+      if (!data || data.length === 0) {
+        return res.status(404).json({ error: `No se encontró un usuario con id ${id}` });
+      }
+      return res.status(200).json({ worker: data[0] }); // Retornar solo el primer usuario
+    }
+
+    return res.status(200).json({ workers: data || [] });
 
   } catch (error) {
-    console.error('Server error:', error)
-    return res.status(500).json({ error: error.message })
+    console.error('Server error:', error);
+    return res.status(500).json({ error: error.message });
   }
 }
-
 /*import { createClient } from '@supabase/supabase-js'
 
 const supabase = createClient(
