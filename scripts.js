@@ -2390,12 +2390,15 @@ async function editUser(userId) {
 
         console.log('Respuesta de la API:', data);
 
-        // 🔹 Verificar si data.worker existe
-        if (!data.worker) {
-            throw new Error(`User with ID ${userId} not found`);
+        // 🔹 Si la API devuelve una lista, buscar el usuario correcto
+        let user = null;
+        if (Array.isArray(data.workers)) {
+            user = data.workers.find(worker => String(worker.id) === userId);
         }
 
-        const user = data.worker; // Extraer datos del usuario
+        if (!user) {
+            throw new Error(`User with ID ${userId} not found`);
+        }
 
         const elements = {
             modal: document.getElementById('userModal'),
@@ -2424,6 +2427,7 @@ async function editUser(userId) {
         showNotification('Error loading user data', 'error');
     }
 }
+
 
 /*function editUser(userId) {
     const user = workers[userId];
