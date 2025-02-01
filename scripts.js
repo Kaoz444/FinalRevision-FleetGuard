@@ -2367,7 +2367,13 @@ async function editUser(userId) {
         if (!response.ok) {
             throw new Error('Failed to fetch user data');
         }
-        const user = await response.json();
+
+        const data = await response.json();
+        const user = data.worker; // Se accede correctamente a los datos de usuario
+
+        if (!user) {
+            throw new Error(`User with ID ${userId} not found`);
+        }
 
         const elements = {
             modal: document.getElementById('userModal'),
@@ -2381,12 +2387,12 @@ async function editUser(userId) {
 
         // Update modal title and form
         elements.title.textContent = 'Edit User';
-        elements.id.value = user.id;
+        elements.id.value = user.id || ''; 
         elements.id.readOnly = true; // ID shouldn't be editable
-        elements.name.value = user.name;
-        elements.email.value = user.email;
-        elements.role.value = user.role;
-        elements.password.value = ''; // Don't show existing password
+        elements.name.value = user.name || ''; // Evita null/undefined
+        elements.email.value = user.email || ''; // Evita null/undefined
+        elements.role.value = user.role || 'user'; // Si no tiene rol, por defecto será 'user'
+        elements.password.value = ''; // No mostrar la contraseña existente
 
         // Show modal
         elements.modal.style.display = 'block';
