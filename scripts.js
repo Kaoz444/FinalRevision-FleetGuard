@@ -2363,7 +2363,7 @@ function showAddUserForm() {
 async function editUser(userId) {
     try {
         // Fetch user data
-        const response = await fetch(`/api/getWorker?id=${userId}`);
+        const response = await fetch(`/api/getWorkers?id=${userId}`);
         if (!response.ok) {
             throw new Error('Failed to fetch user data');
         }
