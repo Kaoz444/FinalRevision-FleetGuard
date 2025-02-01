@@ -2064,6 +2064,48 @@ async function displayUsers() {
         showNotification('Error loading users', 'error');
     }
 }
+//Funcion para guardar los cambios del modal de usuarios
+async function saveUserEdits() {
+    const userId = document.getElementById('userId').value.trim();
+    const name = document.getElementById('userName').value.trim();
+    const email = document.getElementById('userEmail').value.trim();
+    const role = document.getElementById('userRole').value.trim();
+    const password = document.getElementById('userPassword').value.trim();
+
+    const userData = { id: userId, name, email, password_hash: password, role };
+
+    console.log("Enviando datos de usuario:", userData);
+
+    // 📌 Detectar si el usuario ya existe en `workers`
+    const isExistingUser = workers.hasOwnProperty(userId);
+
+    const method = isExistingUser ? 'PUT' : 'POST';
+    
+    try {
+        const response = await fetch(`/api/getWorkers`, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(userData)
+        });
+
+        const result = await response.json();
+        console.log('Respuesta del servidor:', result);
+
+        if (!response.ok) {
+            throw new Error(result.error || `Error ${isExistingUser ? 'updating' : 'creating'} user`);
+        }
+
+        showNotification(`User ${isExistingUser ? 'updated' : 'created'} successfully`, 'success');
+        closeModal(); // Cierra el modal después de la acción
+        displayUsers(); // Recargar la lista de usuarios
+    } catch (error) {
+        console.error(`Error ${isExistingUser ? 'updating' : 'creating'} user:`, error);
+        showNotification(`Error ${isExistingUser ? 'updating' : 'creating'} user`, 'error');
+    }
+}
+
 /*async function displayUsers() {
     const tableBody = document.getElementById('userTableBody');
     if (!tableBody) return;
