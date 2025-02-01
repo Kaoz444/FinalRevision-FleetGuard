@@ -1993,6 +1993,69 @@ async function displayUsers() {
     if (!tableBody) return;
     
     try {
+        // Mostrar estado de carga
+        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Loading users...</td></tr>';
+        
+        // Obtener lista de trabajadores desde Supabase
+        const response = await fetch(`/api/getWorkers?id=${userId}`);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        const workerList = data.workers; // Extraer lista de trabajadores
+
+        if (!Array.isArray(workerList)) {
+            throw new Error('La respuesta de la API no contiene una lista válida de trabajadores');
+        }
+
+        // Vaciar y actualizar la lista de trabajadores en memoria
+        workers = {};
+        workerList.forEach(worker => {
+            workers[worker.id] = worker;
+        });
+
+        console.log('Usuarios cargados en workers:', workers);
+        
+        // Limpiar la tabla antes de renderizar los usuarios
+        tableBody.innerHTML = '';
+        
+        // Renderizar usuarios en la tabla
+        workerList.forEach(user => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${user.id || ''}</td>
+                <td>${user.name || ''}</td>
+                <td>${user.role || ''}</td>
+                <td>${formatDateTime(user.last_activity) || 'No activity'}</td>
+                <td><span class="status-badge ${user.status}">${user.status || 'inactive'}</span></td>
+                <td>
+                    <button class="btn btn-secondary" onclick="editUser('${user.id}')">Edit</button>
+                    <button class="btn btn-secondary" onclick="toggleUserStatus('${user.id}')">
+                        ${user.status === 'active' ? 'Deactivate' : 'Activate'}
+                    </button>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    } catch (error) {
+        console.error('Error fetching workers:', error);
+        tableBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center text-error">
+                    Error loading users. Please try again.
+                </td>
+            </tr>
+        `;
+        showNotification('Error loading users', 'error');
+    }
+}
+
+/*async function displayUsers() {
+    const tableBody = document.getElementById('userTableBody');
+    if (!tableBody) return;
+    
+    try {
         // Show loading state
         tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Loading users...</td></tr>';
         
@@ -2039,7 +2102,7 @@ async function displayUsers() {
         `;
         showNotification('Error loading users', 'error');
     }
-}
+}*/
 
 // Add this helper function for date formatting
 function formatDateTime(dateString) {
