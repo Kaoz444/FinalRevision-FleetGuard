@@ -1991,17 +1991,17 @@ function viewRecordDetails(recordId) {
 async function displayUsers() {
     const tableBody = document.getElementById('userTableBody');
     if (!tableBody) return;
-    
+
     try {
         // Mostrar estado de carga
         tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Loading users...</td></tr>';
-        
-        // Obtener lista de trabajadores desde Supabase
-        const response = await fetch(`/api/getWorkers?id=${userId}`);
+
+        // ✅ Obtener TODOS los usuarios en lugar de un solo usuario
+        const response = await fetch(`/api/getWorkers`);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const data = await response.json();
         const workerList = data.workers; // Extraer lista de trabajadores
 
@@ -2016,10 +2016,10 @@ async function displayUsers() {
         });
 
         console.log('Usuarios cargados en workers:', workers);
-        
+
         // Limpiar la tabla antes de renderizar los usuarios
         tableBody.innerHTML = '';
-        
+
         // Renderizar usuarios en la tabla
         workerList.forEach(user => {
             const row = document.createElement('tr');
@@ -2030,7 +2030,7 @@ async function displayUsers() {
                 <td>${formatDateTime(user.last_activity) || 'No activity'}</td>
                 <td><span class="status-badge ${user.status}">${user.status || 'inactive'}</span></td>
                 <td>
-                    <button class="btn btn-secondary" onclick="editUser('${user.id}')">Edit</button>
+                    <button class="btn btn-secondary edit-user-btn" data-user-id="${user.id}">Edit</button>
                     <button class="btn btn-secondary" onclick="toggleUserStatus('${user.id}')">
                         ${user.status === 'active' ? 'Deactivate' : 'Activate'}
                     </button>
@@ -2038,6 +2038,15 @@ async function displayUsers() {
             `;
             tableBody.appendChild(row);
         });
+
+        // ✅ Asegurar que los botones de edición tengan el evento correcto
+        document.querySelectorAll('.edit-user-btn').forEach(button => {
+            button.addEventListener('click', function () {
+                const userId = this.getAttribute('data-user-id'); // Obtener el ID correcto
+                editUser(userId);
+            });
+        });
+
     } catch (error) {
         console.error('Error fetching workers:', error);
         tableBody.innerHTML = `
@@ -2050,6 +2059,7 @@ async function displayUsers() {
         showNotification('Error loading users', 'error');
     }
 }
+
 
 /*async function displayUsers() {
     const tableBody = document.getElementById('userTableBody');
