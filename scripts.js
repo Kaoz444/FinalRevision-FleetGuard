@@ -2042,7 +2042,12 @@ async function displayUsers() {
         // ✅ Asegurar que los botones de edición tengan el evento correcto
         document.querySelectorAll('.edit-user-btn').forEach(button => {
             button.addEventListener('click', function () {
-                const userId = this.getAttribute('data-user-id'); // Obtener el ID correcto
+                let userId = this.getAttribute('data-user-id'); // Obtener el ID correcto
+                if (!userId) {
+                    console.error('Error: userId es nulo o indefinido');
+                    return;
+                }
+                userId = userId.trim(); // Asegurar que no haya espacios en blanco
                 editUser(userId);
             });
         });
@@ -2059,8 +2064,6 @@ async function displayUsers() {
         showNotification('Error loading users', 'error');
     }
 }
-
-
 /*async function displayUsers() {
     const tableBody = document.getElementById('userTableBody');
     if (!tableBody) return;
