@@ -1,3 +1,19 @@
+/*Estilos para el contenedor de la imagen pequeña*/
+.comment-box {
+    position: relative;
+    z-index: 2;
+    margin-bottom: 70px; /* Add space for the navigation buttons */
+}
+#photoPreviewContainer {
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+}
+.nav-buttons {
+    position: relative;
+    z-index: 3;
+    margin-top: 20px;
+}
 /* Estilos dinamicos para el boton de desloggeo */
 .logout-btn {
     display: none; /* Hidden by default */
