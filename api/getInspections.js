@@ -10,6 +10,54 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+  const { worker_id, isAdmin, status, date } = req.query;
+  console.log('GET /api/getInspections - Query params:', { worker_id, isAdmin, status, date });
+
+  try {
+    let query = supabase.from('inspections').select('*');
+
+    // Apply filters
+    if (worker_id) {
+      query = query.eq('worker_id', worker_id);
+    }
+
+    if (date) {
+      query = query.gte('created_at', `${date}T00:00:00`)
+                  .lte('created_at', `${date}T23:59:59`);
+    }
+
+    if (status && status !== 'all') {
+      query = query.eq('status', status);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Supabase query error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    console.log(`Found ${data?.length || 0} records for worker ${worker_id}`);
+    return res.status(200).json({ inspections: data || [] });
+
+  } catch (error) {
+    console.error('Server error in getInspections:', error);
+    return res.status(500).json({ error: error.message });
+  }
+}
+
+/*import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+);
+
+export default async function handler(req, res) {
+  if (req.method !== 'GET') {
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   const { worker_id, isAdmin } = req.query;
   console.log('GET /api/getInspections - Query params:', { worker_id, isAdmin });
 
@@ -35,7 +83,7 @@ export default async function handler(req, res) {
     console.error('Server error in getInspections:', error);
     return res.status(500).json({ error: error.message });
   }
-}
+}*/
 /*import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
