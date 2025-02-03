@@ -1,3 +1,126 @@
+/* Estilos de las metricas de administrador */
+.metrics-filters {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-top: 2rem;
+}
+
+.metric-card {
+    background: var(--background-light);
+    border-radius: var(--border-radius-lg);
+    padding: 1.5rem;
+    box-shadow: var(--shadow-md);
+    transition: all 0.3s ease;
+}
+
+.dark-theme .metric-card {
+    background: #2d2d2d;
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.metric-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.metric-info-icon {
+    color: var(--primary-color);
+    cursor: help;
+    font-size: 1.1rem;
+}
+
+.metric-value {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    text-align: center;
+    margin: 1rem 0;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin-top: 1rem;
+}
+
+.metric-summary {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-light);
+}
+
+.dark-theme .metric-summary {
+    border-top-color: var(--border-dark);
+}
+
+.summary-item {
+    text-align: center;
+}
+
+.summary-item .label {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-light);
+    margin-bottom: 0.25rem;
+}
+
+.dark-theme .summary-item .label {
+    color: var(--text-dark);
+}
+
+.summary-item .value {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.trending-issues-list {
+    margin-top: 1rem;
+}
+
+.trending-issue {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.dark-theme .trending-issue {
+    border-bottom-color: var(--border-dark);
+}
+
+.trending-issue:last-child {
+    border-bottom: none;
+}
+
+.trending-issue-name {
+    font-weight: 500;
+}
+
+.trending-issue-count {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.25rem 0.5rem;
+    border-radius: var(--border-radius-sm);
+    font-size: 0.9rem;
+}
 /*Estilos para que no puedan scrollear en la pagina de inicio desde la compu*/
 body.login-screen {
     overflow: hidden;
@@ -1171,8 +1294,21 @@ th, td {
     background: rgba(245, 158, 11, 0.95);
 }
 
-/* Media Queries */
+/* Estilos para el mobil */
 @media (max-width: 768px) {
+    /*Estilos para los graficos*/
+    .metrics-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .chart-container {
+        height: 250px;
+    }
+    
+    .metric-value {
+        font-size: 2rem;
+    }
+    /*contenedor de las cosas*/
     .container, 
     .admin-container {
         padding: var(--spacing-sm);
