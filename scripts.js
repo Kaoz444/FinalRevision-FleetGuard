@@ -17,6 +17,17 @@ let currentPage = 1;
 let workers = {};
 
 //declarada al inicio para evitar errores
+function initializeEventListeners() {
+    // Login button
+    document.getElementById('loginBtn')?.addEventListener('click', login);
+    
+    // Language and theme toggles
+    document.getElementById('languageToggleBtn')?.addEventListener('click', toggleLanguage);
+    document.getElementById('themeToggleBtn')?.addEventListener('click', toggleTheme);
+    
+    // Other buttons
+    document.querySelector('.btn-secondary')?.addEventListener('click', startDemoMode);
+}
 //Funcion para el manejo de las fotos y optimizacion
 function cleanupMemory() {
     // Cleanup image data
@@ -3552,6 +3563,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeScrollBehavior();
     updateLanguage();
     setupEventListeners();
+    initializeEventListeners();
 });
 //Funcion para bloquear el scroll en el login (es que se ven todas las pantallas XD)
 function initializeScrollBehavior() {
