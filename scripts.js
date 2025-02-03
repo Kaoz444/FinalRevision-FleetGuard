@@ -2267,7 +2267,7 @@ function showMetrics() {
     cleanupCharts(); // Add this line
     toggleSidebar();
     showScreen('metricsScreen');
-    updateMetricsDisplay();
+    ();
     console.log('Metrics screen shown and charts initialized');
 }
 //ver los detalles de los registros
