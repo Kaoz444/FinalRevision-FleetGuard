@@ -1,3 +1,4 @@
+import { initMetricsDashboard } from 'api/metricsDisplay.js';
 // Core Variables
 const MAX_PHOTOS_PER_ITEM = 3;
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
@@ -1194,7 +1195,15 @@ async function completeInspection() {
         // Generar el PDF de la inspección
         const pdfUrl = await generateInspectionPDF(inspectionRecord);
         inspectionRecord.pdf_url = pdfUrl;
-
+	if (pdfUrl) {
+	    inspectionData.pdf_url = pdfUrl;
+	}
+	try {
+	    await recordAllMetrics(inspectionData);
+	} catch (error) {
+	    console.error('Failed to record metrics:', error);
+	    // Continue with inspection completion even if metrics fail
+	}
         // **Limpieza de memoria después de generar el PDF**
         cleanupMemory();
 
@@ -2271,10 +2280,13 @@ async function showUserManagement() {
 }
 //funcion de pantalla de metricas que se limpia
 function showMetrics() {
-    cleanupCharts(); // Add this line
+    cleanupCharts(); 
     toggleSidebar();
     showScreen('metricsScreen');
-    console.log('Metrics screen shown and charts initialized');
+    initMetricsDashboard().catch(error => {
+        console.error('Error initializing metrics dashboard:', error);
+        showNotification('Error loading metrics dashboard', 'error');
+    });
 }
 //ver los detalles de los registros
 function viewRecordDetails(recordId) {
