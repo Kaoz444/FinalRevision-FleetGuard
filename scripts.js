@@ -2479,8 +2479,16 @@ function formatDateTime(dateString) {
 }
 //Funcion para actualizar y mostrar las metricas
 function updateMetricsDisplay() {
+	    try {
+        // Obtener datos desde la API en lugar de `localStorage`
+        const response = await fetch('/api/getMetricsData');
+        const { inspections: records, metrics } = await response.json();
+
+        if (!records || records.length === 0) {
+            console.warn('No records found.');
+            return;
+        }
     // Get all inspection records
-    const records = JSON.parse(localStorage.getItem('inspectionRecords') || '[]');
     const fleetConditions = records.map(record => record.overallCondition?.score || 0);
     
     // Calculate average overall condition
