@@ -1445,7 +1445,14 @@ async function compressImage(file, maxWidth = 800, maxHeight = 600, quality = 0.
 }
 
 function cleanupCharts() {
-  const chartIds = ['inspectionTimesChart', 'fleetConditionChart'];
+  const chartIds = [
+    'inspectionTimesChart',
+    'fleetConditionChart',
+    'weeklyInspectionsChart',
+    'issueDistributionChart',
+    'inspectorPerformanceChart'
+  ];
+  
   chartIds.forEach(id => {
     const chart = Chart.getChart(id);
     if (chart) {
