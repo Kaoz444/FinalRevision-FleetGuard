@@ -2620,6 +2620,77 @@ function updateMetricsDisplay() {
     }
 }
 
+function updateMetricsDisplay() {
+    // Get all inspection records
+    const records = JSON.parse(localStorage.getItem('inspectionRecords') || '[]');
+    const fleetConditions = records.map(record => record.overallCondition?.score || 0);
+    
+    // Calculate average overall condition
+    const averageCondition = fleetConditions.length > 0
+        ? fleetConditions.reduce((acc, curr) => acc + curr, 0) / fleetConditions.length
+        : 0;
+    
+    // Calculate average inspection time
+    const timesWithDuration = records.filter(record => record.duration);
+    const averageTime = timesWithDuration.length > 0
+        ? timesWithDuration.reduce((acc, curr) => acc + curr.duration, 0) / timesWithDuration.length
+        : 0;
+        
+    // Calculate times by inspector
+    const inspectorTimes = {};
+    timesWithDuration.forEach(record => {
+        if (!inspectorTimes[record.worker]) {
+            inspectorTimes[record.worker] = [];
+        }
+        inspectorTimes[record.worker].push(record.duration);
+    });
+
+    // Format time for display
+    const formatTime = (seconds) => {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.round(seconds % 60);
+        return `${minutes}m ${remainingSeconds}s`;
+    };
+
+    // Update the average time card
+    const averageTimeDisplay = document.getElementById('averageTimeValue');
+    if (averageTimeDisplay) {
+        averageTimeDisplay.textContent = formatTime(averageTime);
+    }
+     
+    // Update the overall condition card
+    const fleetConditionDisplay = document.getElementById('fleetConditionValue');
+    if (fleetConditionDisplay) {
+        fleetConditionDisplay.textContent = `${averageCondition.toFixed(1)}%`;
+    }
+    
+    // Create fleet condition chart
+    const fleetCtx = document.getElementById('fleetConditionChart');
+    if (fleetCtx && window.Chart) {
+        new Chart(fleetCtx, {
+            type: 'line',
+            data: {
+                labels: records.map(r => new Date(r.date).toLocaleDateString()),
+                datasets: [{
+                    label: 'Vehicle Condition %',
+                    data: fleetConditions,
+                    borderColor: '#3b82f6',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        max: 100
+                    }
+                }
+            }
+        });
+    }
+}
+
 /*function updateMetricsDisplay() {
     // Get all inspection records
     const records = JSON.parse(localStorage.getItem('inspectionRecords') || '[]');
@@ -2698,7 +2769,7 @@ function updateMetricsDisplay() {
                 }
             }
         });
-    }*/
+    }
     // Create fleet condition chart
     const fleetCtx = document.getElementById('fleetConditionChart');
 	if (fleetCtx && window.Chart) {
@@ -2725,7 +2796,7 @@ function updateMetricsDisplay() {
 	    });
 	  }
 
-}
+}*/
 //funcion para mostrar y seleccionar los records basandome en el usuario
 async function displayRecords(page = 1) {
     const recordsContainer = document.getElementById('recordsContainer');
