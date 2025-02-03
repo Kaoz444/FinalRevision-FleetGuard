@@ -37,7 +37,7 @@
                        pattern="(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{6,12}" 
                        required>
             </div>
-            <button class="btn" onclick="login()">
+            <button class="btn" id="loginBtn">
                 <span data-lang="en">Login</span>
                 <span data-lang="es">Iniciar Sesión</span>
             </button>
@@ -130,11 +130,11 @@
         <span data-lang="es">Salir</span>
     </button>
     <div class="nav-controls">
-        <button class="toggle-btn language-toggle" onclick="toggleLanguage()">
+        <button class="toggle-btn language-toggle" id="languageToggleBtn">
             <span data-lang="en" style="display: none;">🇺🇸 EN</span>
             <span data-lang="es">🇲🇽 ES</span>
         </button>
-        <button class="toggle-btn theme-toggle" onclick="toggleTheme()">🌓</button>
+        <button class="toggle-btn theme-toggle" id="themeToggleBtn">🌓</button>
     </div>
 </div>
 </div>
