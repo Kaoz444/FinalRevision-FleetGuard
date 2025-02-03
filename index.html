@@ -294,7 +294,104 @@
     </div>
 </div><!-- Termina carta modal de administracion de usuarios -->
 <!-- Metrics Screen -->
-<div id="metricsScreen" class="screen admin-container">
+    <!-- Metrics Screen -->
+    <div id="metricsScreen" class="screen admin-container">
+        <div class="card">
+            <h2 class="title">Metrics Dashboard</h2>
+            <div class="metrics-filters">
+                <select id="metricsTimeRange" class="filter-select">
+                    <option value="day">Last 24 Hours</option>
+                    <option value="week">Last Week</option>
+                    <option value="month">Last Month</option>
+                    <option value="year">Last Year</option>
+                </select>
+            </div>
+            <div class="metrics-grid">
+                <!-- Average Inspection Time -->
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Average Inspection Time</h3>
+                        <div class="metric-info-icon" title="Average time taken to complete inspections">ⓘ</div>
+                    </div>
+                    <p class="metric-value" id="averageTimeValue">--</p>
+                    <div class="chart-container">
+                        <canvas id="inspectionTimesChart"></canvas>
+                    </div>
+                </div>
+    
+                <!-- Fleet Health Score -->
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Fleet Health Score</h3>
+                        <div class="metric-info-icon" title="Overall condition of the entire fleet">ⓘ</div>
+                    </div>
+                    <p class="metric-value" id="fleetConditionValue">--</p>
+                    <div class="chart-container">
+                        <canvas id="fleetConditionChart"></canvas>
+                    </div>
+                </div>
+    
+                <!-- Weekly Inspection Volume -->
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Weekly Inspections</h3>
+                        <div class="metric-info-icon" title="Number of inspections completed per week">ⓘ</div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="weeklyInspectionsChart"></canvas>
+                    </div>
+                </div>
+    
+                <!-- Issue Distribution -->
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Issue Distribution</h3>
+                        <div class="metric-info-icon" title="Distribution of issues by severity">ⓘ</div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="issueDistributionChart"></canvas>
+                    </div>
+                    <div class="metric-summary" id="issueDistributionSummary">
+                        <div class="summary-item">
+                            <span class="label">Critical</span>
+                            <span class="value" id="criticalIssuesCount">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="label">Warning</span>
+                            <span class="value" id="warningIssuesCount">0</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="label">OK</span>
+                            <span class="value" id="okIssuesCount">0</span>
+                        </div>
+                    </div>
+                </div>
+    
+                <!-- Inspector Performance -->
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Inspector Performance</h3>
+                        <div class="metric-info-icon" title="Performance metrics for each inspector">ⓘ</div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="inspectorPerformanceChart"></canvas>
+                    </div>
+                </div>
+    
+                <!-- Trending Issues -->
+                <div class="metric-card">
+                    <div class="metric-header">
+                        <h3>Trending Issues</h3>
+                        <div class="metric-info-icon" title="Most common issues found in inspections">ⓘ</div>
+                    </div>
+                    <div class="trending-issues-list" id="trendingIssuesList">
+                        <!-- Dynamically populated -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<!--<div id="metricsScreen" class="screen admin-container">
     <div class="card">
         <h2 class="title">Metrics Dashboard</h2>
         <div class="metrics-grid">
@@ -335,7 +432,7 @@
             </div>
         </div>
     </div>
-</div> <!-- Termina pantalla de metricas -->
+</div>--> <!-- Termina pantalla de metricas -->
     <!-- New Settings Screen HTML -->
 <div id="settingsScreen" class="screen admin-container">
     <div class="card">
