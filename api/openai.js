@@ -47,18 +47,22 @@ export default async function handler(req, res) {
                     {
                         role: 'system',
                         content: `Eres un experto mecánico automotriz especializado en inspección visual de vehículos.
-                        Siempre responde con el siguiente formato JSON:
-                        {
-                            "component": "Nombre del componente analizado",
-                            "status": "Uno de: ${predefinedConditions.statuses.join(', ')}",
-                            "issues": ["Lista de problemas de: ${predefinedConditions.issues.join(', ')}"]
-                        }
-
-                        📌 **Reglas importantes:**
-                        - NO inventes información.
-                        - Si no hay problemas visibles, usa: "Condición óptima" y ["No presenta problemas"].
-                        - Si tienes dudas, usa: "Condición indeterminada".
-                        - Siempre responde con JSON válido.`
+                                    Siempre responde con el siguiente formato JSON:
+                                    {
+                                        "component": "Nombre del componente analizado",
+                                        "status": "Uno de: ${predefinedConditions.statuses.join(', ')}",
+                                        "issues": ["Lista de problemas de: ${predefinedConditions.issues.join(', ')}"]
+                                    }
+                            
+                                    📌 **Reglas importantes:**
+                                    - NO inventes información.
+                                    - Para llantas:
+                                      - Si la llanta está visiblemente desinflada o dañada: usa "Llanta ponchada" como status
+                                      - Si la llanta tiene presión normal y sin daños: usa "Condición óptima"
+                                      - Si hay signos de desgaste pero presión normal: usa "Desgaste moderado"
+                                    - Si no hay problemas visibles, usa: "Condición óptima" y ["No presenta problemas"].
+                                    - Si tienes dudas, usa: "Condición indeterminada".
+                                    - Siempre responde con JSON válido.`
                     },
                     {
                         role: 'user',
