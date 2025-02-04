@@ -2424,12 +2424,86 @@ async function saveUserEdits() {
     }
 }*/
 
-// Add this helper function for date formatting
+// Formateo de la fecha
 function formatDateTime(dateString) {
     if (!dateString) return '';
     return new Date(dateString).toLocaleString();
 }
+//Funcion para crear las metricas
 function updateMetricsDisplay() {
+    // Obtener todos los registros de inspección
+    const records = JSON.parse(localStorage.getItem('inspectionRecords') || '[]');
+    const fleetConditions = records.map(record => record.overallCondition?.score || 0);
+    
+    // Calcular promedio de condición general
+    const averageCondition = fleetConditions.length > 0
+        ? fleetConditions.reduce((acc, curr) => acc + curr, 0) / fleetConditions.length
+        : 0;
+    
+    // Calcular tiempo promedio de inspección
+    const timesWithDuration = records.filter(record => record.duration);
+    const averageTime = timesWithDuration.length > 0
+        ? timesWithDuration.reduce((acc, curr) => acc + curr.duration, 0) / timesWithDuration.length
+        : 0;
+    
+    // Calcular tiempos por inspector
+    const inspectorTimes = {};
+    timesWithDuration.forEach(record => {
+        if (!inspectorTimes[record.worker]) {
+            inspectorTimes[record.worker] = [];
+        }
+        inspectorTimes[record.worker].push(record.duration);
+    });
+    
+    // Formatear tiempo para visualización
+    const formatTime = (seconds) => {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.round(seconds % 60);
+        return `${minutes}m ${remainingSeconds}s`;
+    };
+    
+    // Actualizar valores en UI
+    document.getElementById('averageTimeValue')?.textContent = formatTime(averageTime);
+    document.getElementById('fleetConditionValue')?.textContent = `${averageCondition.toFixed(1)}%`;
+    
+    // Datos de ejemplo
+    const weeklyData = { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], data: [8, 12, 15, 10, 14, 6, 4] };
+    const issueData = { labels: ['Critical', 'Warning', 'OK'], data: [15, 25, 60] };
+    const performanceData = { labels: ['John', 'Maria', 'Carlos', 'Sarah'], data: [92, 88, 95, 87] };
+    
+    // Eliminar gráficos existentes
+    const existingCharts = [
+        'inspectionTimesChart', 'weeklyInspectionsChart', 'issueDistributionChart',
+        'inspectorPerformanceChart', 'fleetConditionChart'
+    ];
+    existingCharts.forEach(chartId => Chart.getChart(chartId)?.destroy());
+    
+    // Crear datos para el gráfico de tiempos por inspector
+    const chartData = Object.entries(inspectorTimes).map(([inspector, times]) => ({
+        inspector,
+        averageTime: times.reduce((acc, curr) => acc + curr, 0) / times.length
+    }));
+    
+    // Crear gráficos
+    const createChart = (id, type, labels, data, options = {}) => {
+        const ctx = document.getElementById(id);
+        if (ctx) {
+            new Chart(ctx, {
+                type,
+                data: { labels, datasets: [{ label: options.label || '', data, backgroundColor: options.backgroundColor || '#3b82f6', borderRadius: options.borderRadius || 0 }] },
+                options: { responsive: true, plugins: { legend: { display: options.legend !== false } }, scales: options.scales || {} }
+            });
+        }
+    };
+    
+    createChart('inspectionTimesChart', 'bar', chartData.map(d => d.inspector), chartData.map(d => d.averageTime), { label: 'Average Inspection Time (seconds)', scales: { y: { beginAtZero: true, title: { display: true, text: 'Time (seconds)' } } } });
+    createChart('weeklyInspectionsChart', 'bar', weeklyData.labels, weeklyData.data, { label: 'Inspections', borderRadius: 6, legend: false, scales: { y: { beginAtZero: true, ticks: { stepSize: 5 } } } });
+    createChart('issueDistributionChart', 'doughnut', issueData.labels, issueData.data, { backgroundColor: ['#ef4444', '#f59e0b', '#10b981'], legend: true });
+    createChart('inspectorPerformanceChart', 'bar', performanceData.labels, performanceData.data, { label: 'Performance Score', borderRadius: 6, legend: false, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: value => value + '%' } } } });
+    createChart('fleetConditionChart', 'line', records.map(r => new Date(r.date).toLocaleDateString()), fleetConditions, { label: 'Vehicle Condition %', borderColor: '#3b82f6', tension: 0.1, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: value => value + '%' } } } });
+}
+
+/*function updateMetricsDisplay() {
     // Get all inspection records
     const records = JSON.parse(localStorage.getItem('inspectionRecords') || '[]');
     const fleetConditions = records.map(record => record.overallCondition?.score || 0);
@@ -2534,7 +2608,7 @@ function updateMetricsDisplay() {
 	    });
 	  }
 
-}
+}*/
 //funcion para mostrar y seleccionar los records basandome en el usuario
 async function displayRecords(page = 1) {
     const recordsContainer = document.getElementById('recordsContainer');
