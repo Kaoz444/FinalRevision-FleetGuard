@@ -46,6 +46,140 @@ export default async function handler(req, res) {
                 messages: [
                     {
                         role: 'system',
+                        content: `Eres un experto en inspección de vehículos. Siempre responde en formato JSON con esta estructura:
+                        {
+                            "component": "Nombre del componente analizado",
+                            "status": "Uno de: ${predefinedConditions.statuses.join(', ')}",
+                            "issues": ["Lista de problemas detectados de: ${predefinedConditions.issues.join(', ')}"]
+                        }
+                        
+                        📌 **Reglas Importantes:**
+                        - Si la llanta está visiblemente desinflada, usa "Llanta ponchada".
+                        - Si hay deformaciones visibles, usa "Requiere reparación urgente".
+                        - Si no hay daños, usa "Condición óptima".
+                        - Si hay duda entre dos estados, elige el más severo.
+                        - NO inventes información.
+                        - Si la imagen es irreconocible, responde con:
+                          {
+                            "component": "Desconocido",
+                            "status": "No determinado",
+                            "issues": []
+                          }`
+                    },
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'text',
+                                text: `Analiza esta llanta utilizando exclusivamente estos estados y problemas:`
+                            },
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: `data:image/jpeg;base64,${image}`
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens: 150
+            })
+        });
+
+        const data = await response.json();
+
+        // Manejo de errores en la respuesta de OpenAI
+        if (!response.ok) {
+            console.error('🚨 Error en la respuesta de OpenAI:', JSON.stringify(data, null, 2));
+            return res.status(response.status).json({ error: data });
+        }
+
+        // Verificar si la IA respondió con JSON válido
+        const rawResponse = data.choices[0]?.message?.content?.trim();
+        console.log("🔍 Respuesta cruda de OpenAI:", rawResponse);
+
+        let parsedResponse;
+        if (typeof rawResponse === "string") {
+            try {
+                parsedResponse = JSON.parse(rawResponse);
+            } catch (error) {
+                console.error("❌ Error al analizar JSON de OpenAI:", rawResponse);
+                return res.status(500).json({ error: "Error al procesar la respuesta de IA" });
+            }
+        } else {
+            parsedResponse = rawResponse; // Si ya es un objeto, úsalo directamente
+        }
+
+        // Validar que los campos esperados existen en la respuesta
+        if (!parsedResponse.component || !parsedResponse.status || !Array.isArray(parsedResponse.issues)) {
+            console.error("❌ Respuesta mal formada de OpenAI:", JSON.stringify(parsedResponse, null, 2));
+            return res.status(500).json({ error: "Respuesta estructurada inválida de OpenAI" });
+        }
+
+        // Validar que el estado y los problemas están en las listas predefinidas
+        if (!predefinedConditions.statuses.includes(parsedResponse.status)) {
+            console.error("❌ Estado inválido recibido:", parsedResponse.status);
+            return res.status(500).json({ error: "Estado fuera de los valores predefinidos" });
+        }
+
+        parsedResponse.issues = parsedResponse.issues.filter(issue => predefinedConditions.issues.includes(issue));
+
+        return res.status(200).json({ result: parsedResponse });
+
+    } catch (error) {
+        console.error('🚨 Error en el procesamiento:', error);
+        return res.status(500).json({ error: 'Error al procesar la solicitud' });
+    }
+}
+
+/*export default async function handler(req, res) {
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Método no permitido' });
+    }
+
+    const { prompt, image } = req.body;
+    if (!prompt) {
+        return res.status(400).json({ error: 'Se requiere un prompt válido' });
+    }
+
+    // Estados y problemas predefinidos
+    const predefinedConditions = {
+        statuses: [
+            "Condición óptima",
+            "Leve desgaste",
+            "Desgaste moderado",
+            "Requiere reparación menor",
+            "Requiere reparación urgente",
+            "Llanta ponchada",
+            "No funcional"
+        ],
+        issues: [
+            "No presenta problemas",
+            "Sin desgaste visible",
+            "Condición normal",
+            "Presión baja visible",
+            "Desgaste irregular",
+            "Daño estructural visible",
+            "Pérdida total de presión",
+            "Objeto punzante visible",
+            "Deformación visible",
+            "Grietas visibles",
+            "Desgaste excesivo"
+        ]
+    };
+
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o',
+                messages: [
+                    {
+                        role: 'system',
                         content: `Eres un experto en inspección de vehículos. Siempre responde en formato JSON siguiendo esta estructura:
                         {
                             "component": "Nombre del componente analizado",
@@ -131,7 +265,7 @@ export default async function handler(req, res) {
         console.error('Error en el procesamiento:', error);
         return res.status(500).json({ error: 'Error al procesar la solicitud' });
     }
-}
+}*/
 
 /*export default async function handler(req, res) {
     if (req.method !== 'POST') {
