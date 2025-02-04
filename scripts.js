@@ -2147,8 +2147,103 @@ function evaluateComponentCondition(description) {
 
     return bestCondition;
 }*/
-
 async function analyzePhotoWithOpenAI(base64Images) {
+    console.log('Starting analyzePhotoWithOpenAI function...');
+
+    // Crear y mostrar overlay
+    const overlay = document.createElement('div');
+    overlay.className = 'processing-overlay';
+    overlay.innerHTML = `
+        <div class="processing-message">
+            <div class="loading-spinner"></div>
+            <p>Analyzing photo with AI...</p>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const item = inspectionItems[currentIndex];
+
+    if (!item) {
+        console.error('No current inspection item found!');
+        document.body.removeChild(overlay);
+        return 'Error: No current inspection item found';
+    }
+
+    const componentName = item.name[currentLanguage];
+    console.log('Current inspection item:', JSON.stringify(item, null, 2));
+    console.log('Component name:', componentName);
+    console.log('Base64 images count:', base64Images.length);
+
+    // Si el ítem no requiere fotos, salir de la función
+    if (item.requiredPhotos === 0) {
+        console.log(`No photo analysis required for component: ${componentName}`);
+        document.body.removeChild(overlay);
+        return `Component: ${componentName}\nStatus: No photo analysis required`;
+    }
+
+    if (!Array.isArray(base64Images) || base64Images.length === 0) {
+        console.error('No images provided for analysis');
+        document.body.removeChild(overlay);
+        return `Error: No images provided for analysis for ${componentName}`;
+    }
+
+    try {
+        const responses = await Promise.allSettled(
+            base64Images.map(async (base64Image, index) => {
+                const payload = {
+                    prompt: componentName,
+                    image: base64Image.split(',')[1] // Enviar solo el contenido Base64 sin encabezado
+                };
+
+                console.log(`Payload enviado al backend para imagen ${index + 1}:`, JSON.stringify(payload, null, 2));
+
+                const response = await fetch('/api/openai', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                });
+
+                console.log(`Response status for image ${index + 1}:`, response.status);
+
+                if (!response.ok) {
+                    const errorDetails = await response.text();
+                    console.error(`HTTP error for image ${index + 1}:`, response.status, errorDetails);
+                    return `Error processing image ${index + 1}: ${errorDetails}`;
+                }
+
+                const data = await response.json();
+                console.log(`Response data for image ${index + 1}:`, JSON.stringify(data, null, 2));
+
+                if (data.error) {
+                    console.error(`Error in AI response for image ${index + 1}:`, data.error);
+                    return `Error processing image ${index + 1}: ${data.error}`;
+                }
+
+                if (data.result?.component && data.result?.status) {
+                    return `Component: ${data.result.component}\nStatus: ${data.result.status}\nIssues: ${data.result.issues.join(', ') || 'Ninguno'}`;
+                } else {
+                    console.error(`Invalid response format for image ${index + 1}:`, JSON.stringify(data, null, 2));
+                    return `Error: Invalid response format for image ${index + 1}`;
+                }
+            })
+        );
+
+        const processedResponses = responses.map((result, index) => {
+            return result.status === 'fulfilled' ? result.value : `Error processing image ${index + 1}: ${result.reason}`;
+        });
+
+        console.log('All responses processed:', JSON.stringify(processedResponses, null, 2));
+        return processedResponses.join('\n');
+
+    } catch (error) {
+        console.error('Unexpected error analyzing photos:', error);
+        return 'Error analyzing photos';
+    } finally {
+        document.body.removeChild(overlay);
+    }
+}
+
+/*async function analyzePhotoWithOpenAI(base64Images) {
     console.log('Starting analyzePhotoWithOpenAI function...');
 
     // Crear y mostrar overlay
@@ -2287,7 +2382,7 @@ async function analyzePhotoWithOpenAI(base64Images) {
         // Quitar el overlay cuando termine el proceso
         document.body.removeChild(overlay);
     }
-}
+}*/
 
 // Admin Dashboard Functions
 function showAdminDashboard() {
