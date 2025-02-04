@@ -100,14 +100,40 @@ export default async function handler(req, res) {
         }
 
         // ✅ OpenAI ya devuelve JSON estructurado, lo usamos directamente
-        let parsedResponse;
+             // ✅ Parse OpenAI response
+            let parsedResponse;
+            try {
+                const content = data.choices[0].message.content.trim();
+                // Check if content is already JSON
+                if (content.startsWith('{') && content.endsWith('}')) {
+                    try {
+                        parsedResponse = JSON.parse(content);
+                    } catch {
+                        // If JSON parsing fails, try extracting JSON from code block
+                        const jsonMatch = content.match(/```json\s*(\{[\s\S]*\})\s*```/);
+                        if (jsonMatch) {
+                            parsedResponse = JSON.parse(jsonMatch[1]);
+                        } else {
+                            throw new Error('Invalid JSON format');
+                        }
+                    }
+                } else {
+                    throw new Error('Response is not in JSON format');
+                }
+                console.log("✅ Respuesta JSON recibida de OpenAI:", JSON.stringify(parsedResponse, null, 2));
+            } catch (error) {
+                console.error("❌ Error al analizar JSON de OpenAI:", data.choices[0].message.content);
+                console.error("Error details:", error.message);
+                return res.status(500).json({ error: "Error al procesar la respuesta de IA" });
+            }
+        /*let parsedResponse;
         try {
             parsedResponse = JSON.parse(data.choices[0].message.content.trim());
             console.log("✅ Respuesta JSON recibida de OpenAI:", JSON.stringify(parsedResponse, null, 2));
         } catch (error) {
             console.error("❌ Error al analizar JSON de OpenAI:", data.choices[0].message.content);
             return res.status(500).json({ error: "Error al procesar la respuesta de IA" });
-        }
+        }*/
 
         // ✅ Validar que los campos esperados existen en la respuesta
         if (!parsedResponse.component || !parsedResponse.status || !Array.isArray(parsedResponse.issues)) {
