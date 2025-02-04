@@ -1985,7 +1985,7 @@ async function resizeImage(file, maxWidth = 1280, maxHeight = 960, quality = 0.7
     });
 }
 //funcion principal de analisis de IA con validaciones extras de funciones
-async function analyzePhotoWithOpenAI(base64Images) {
+/*async function analyzePhotoWithOpenAI(base64Images) {
     console.log('Starting analyzePhotoWithOpenAI function...');
 
     // Crear y mostrar overlay
@@ -2146,9 +2146,9 @@ function evaluateComponentCondition(description) {
     });
 
     return bestCondition;
-}
+}*/
 
-/*async function analyzePhotoWithOpenAI(base64Images) {
+async function analyzePhotoWithOpenAI(base64Images) {
     console.log('Starting analyzePhotoWithOpenAI function...');
 
     // Crear y mostrar overlay
@@ -2287,7 +2287,7 @@ function evaluateComponentCondition(description) {
         // Quitar el overlay cuando termine el proceso
         document.body.removeChild(overlay);
     }
-}*/
+}
 
 // Admin Dashboard Functions
 function showAdminDashboard() {
