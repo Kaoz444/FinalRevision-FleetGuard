@@ -3,6 +3,137 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Método no permitido' });
     }
 
+    const { prompt, image } = req.body;
+    if (!prompt) {
+        return res.status(400).json({ error: 'Se requiere un prompt válido' });
+    }
+
+    // Enhanced predefined conditions specific to tire analysis
+    const predefinedConditions = {
+        statuses: [
+            "Condición óptima",
+            "Leve desgaste",
+            "Desgaste moderado",
+            "Requiere reparación menor",
+            "Requiere reparación urgente",
+            "Llanta ponchada",
+            "No funcional"
+        ],
+        issues: [
+            "No presenta problemas",
+            "Sin desgaste visible",
+            "Condición normal",
+            "Presión baja visible",
+            "Desgaste irregular",
+            "Daño estructural visible",
+            "Pérdida total de presión",
+            "Objeto punzante visible",
+            "Deformación visible",
+            "Grietas visibles",
+            "Desgaste excesivo"
+        ]
+    };
+
+    try {
+        const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            },
+            body: JSON.stringify({
+                model: 'gpt-4-vision-preview',
+                messages: [
+                    {
+                        role: 'system',
+                        content: `Eres un experto en inspección de llantas y vehículos. Tu tarea es analizar imágenes de llantas y detectar problemas específicos.
+
+                        REGLAS IMPORTANTES PARA ANÁLISIS DE LLANTAS:
+                        1. Si ves una llanta visiblemente desinflada o plana: SIEMPRE usa "Llanta ponchada" como estado
+                        2. Si ves deformación en la llanta: usa "Requiere reparación urgente"
+                        3. Si la llanta tiene presión normal y no hay daños: usa "Condición óptima"
+                        4. Si hay desgaste pero presión normal: usa "Desgaste moderado"
+                        
+                        Busca específicamente:
+                        - Desinflado visible
+                        - Deformaciones
+                        - Objetos incrustados
+                        - Grietas o daños
+                        - Desgaste irregular
+                        - Problemas de alineación
+
+                        IMPORTANTE: Sé conservador - si hay cualquier duda sobre el estado, escoge el estado más crítico.`
+                    },
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'text',
+                                text: `Analiza esta llanta usando ÚNICAMENTE estos estados: ${predefinedConditions.statuses.join(', ')} y estos problemas: ${predefinedConditions.issues.join(', ')}.`
+                            },
+                            {
+                                type: 'image_url',
+                                image_url: {
+                                    url: `data:image/jpeg;base64,${image}`
+                                }
+                            }
+                        ]
+                    }
+                ],
+                max_tokens: 150
+            })
+        });
+
+        const data = await response.json();
+        
+        if (!response.ok) {
+            console.error('Error en la respuesta de OpenAI:', data);
+            return res.status(response.status).json({ error: data });
+        }
+
+        const rawResponse = data.choices[0]?.message?.content;
+        let parsedResponse;
+
+        try {
+            // Extract status and issues using regex
+            const statusMatch = rawResponse.match(/estado[:\s]+["']?(.*?)["']?[\s,\.]/i);
+            const issuesMatch = rawResponse.match(/problemas[:\s]+["']?(.*?)["']?[\s,\.]/i);
+
+            if (!statusMatch || !issuesMatch) {
+                throw new Error('No se pudo extraer el estado o los problemas');
+            }
+
+            const status = statusMatch[1].trim();
+            const issues = issuesMatch[1].split(',').map(issue => issue.trim());
+
+            // Validate extracted values
+            if (!predefinedConditions.statuses.includes(status)) {
+                throw new Error('Estado no válido detectado');
+            }
+
+            parsedResponse = {
+                component: "Llanta",
+                status: status,
+                issues: issues.filter(issue => predefinedConditions.issues.includes(issue))
+            };
+
+        } catch (error) {
+            console.error('Error parsing AI response:', error);
+            return res.status(500).json({ error: 'Error al procesar la respuesta de IA' });
+        }
+
+        return res.status(200).json({ result: parsedResponse });
+
+    } catch (error) {
+        console.error('Error en el procesamiento:', error);
+        return res.status(500).json({ error: 'Error al procesar la solicitud' });
+    }
+}
+/*export default async function handler(req, res) {
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Método no permitido' });
+    }
+
     const { prompt } = req.body;
     if (!prompt) {
         return res.status(400).json({ error: 'Se requiere un prompt válido' });
@@ -102,7 +233,7 @@ export default async function handler(req, res) {
     } catch (error) {
         return res.status(500).json({ error: 'Error al procesar la solicitud' });
     }
-}
+}*/
 
 /*export default async function handler(req, res) {
     if (req.method !== 'POST') {
