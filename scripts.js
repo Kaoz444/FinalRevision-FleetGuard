@@ -2463,8 +2463,14 @@ function updateMetricsDisplay() {
     };
     
     // Actualizar valores en UI
-    document.getElementById('averageTimeValue')?.textContent = formatTime(averageTime);
-    document.getElementById('fleetConditionValue')?.textContent = `${averageCondition.toFixed(1)}%`;
+	const avgTimeElem = document.getElementById('averageTimeValue');
+		if (avgTimeElem) avgTimeElem.textContent = formatTime(averageTime);
+		
+		const fleetConditionElem = document.getElementById('fleetConditionValue');
+		if (fleetConditionElem) fleetConditionElem.textContent = `${averageCondition.toFixed(1)}%`;
+
+    //document.getElementById('averageTimeValue')?.textContent = formatTime(averageTime);
+    //document.getElementById('fleetConditionValue')?.textContent = `${averageCondition.toFixed(1)}%`;
     
     // Datos de ejemplo
     const weeklyData = { labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'], data: [8, 12, 15, 10, 14, 6, 4] };
