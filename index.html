@@ -19,13 +19,10 @@
 <body>
     <!-- Notification Container -->
     <div id="customNotification" class="custom-notification"></div>
-
-    <!-- Global Controls -->
-
     <!-- Login Screen -->
     <div id="loginScreen" class="screen container">
         <div class="card">
-            <h1 class="title">FleetGuard V 3.6.8</h1>
+            <h1 class="title">FleetGuard V 3.6.9</h1>
             <div class="input-group">
                 <input type="text" id="workerId" 
                        placeholder="Worker ID / ID de Trabajador" 
@@ -105,7 +102,6 @@
                     <span data-lang="es">Tomar Fotografía</span>
                 </button>
                 <div id="imageLoadingSpinner" class="loading-spinner"></div>
-                <!--<img id="photoPreview" style="max-width: 100%; margin-top: 10px; display: none;" loading="lazy">-->
                 <!-- Contenedor para múltiples fotos con más espacio -->
                 <div id="photoPreviewContainer" style="display: flex; flex-wrap: wrap; margin-top: 20px; gap: 10px; justify-content: center;"></div>
 
@@ -193,10 +189,6 @@
                             <option value="warning">Warning</option>
                             <option value="ok">OK</option>
                         </select>
-                        <!--<button class="btn btn-secondary" onclick="exportRecords()">
-                            <span data-lang="en">Export CSV</span>
-                            <span data-lang="es">Exportar CSV</span>
-                        </button>-->
                          <!-- Contenedor para mostrar el enlace del PDF generado en modo demo -->
                     <div id="pdfLinkContainer" style="display: none; margin-top: 20px; text-align: center;"></div>
                     </div>
@@ -351,8 +343,8 @@
                 </div>
             </div>--> <!-- Termina nueva pantalla de métricas -->
 
-<!-- Metrics Screen Anterior -->
-<!--<div id="metricsScreen" class="screen admin-container">
+<!-- Metrics Screen Anterior 
+ <div id="metricsScreen" class="screen admin-container">
     <div class="card">
         <h2 class="title">Metrics Dashboard</h2>
         <div class="metrics-grid">
@@ -387,7 +379,7 @@
             </div>
         </div>
     </div>
-</div>--> <!-- Termina pantalla de metricas pasada -->
+</div> Termina pantalla de metricas pasada -->
     <!-- New Settings Screen HTML -->
 <div id="settingsScreen" class="screen admin-container">
     <div class="card">
