@@ -3,6 +3,127 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Método no permitido' });
     }
 
+    const { prompt, images } = req.body;
+    if (!prompt || !images || !Array.isArray(images)) {
+        return res.status(400).json({ error: 'Se requieren prompt e imágenes válidas' });
+    }
+
+    const componentConditions = {
+        tires: {
+            statuses: ["Óptimo", "Desgaste normal", "Desgaste avanzado", "Desinflado", "Ponchado", "Crítico"],
+            issues: ["Sin problemas", "Presión baja", "Desgaste irregular", "Desgaste en bordes", "Grietas", "Objeto punzante", "Deformación"]
+        },
+        mirrors: {
+            statuses: ["Óptimo", "Funcional", "Dañado", "Crítico"],
+            issues: ["Sin problemas", "Rayones menores", "Rajadura", "Desajustado", "Visibilidad reducida", "Roto"]
+        },
+        license_plates: {
+            statuses: ["Óptimo", "Legible", "Parcialmente legible", "Ilegible"],
+            issues: ["Sin problemas", "Suciedad", "Decoloración", "Dobladura", "Daño físico", "Baja reflectividad"]
+        },
+        headlights: {
+            statuses: ["Óptimo", "Funcional", "Deteriorado", "No funcional"],
+            issues: ["Sin problemas", "Opacidad", "Humedad", "Grietas", "Bajo brillo", "Daño estructural"]
+        },
+        cleanliness: {
+            statuses: ["Excelente", "Aceptable", "Requiere limpieza", "Inaceptable"],
+            issues: ["Sin problemas", "Polvo", "Manchas", "Suciedad excesiva", "Residuos"]
+        },
+        scratches: {
+            statuses: ["Sin daños", "Daños menores", "Daños moderados", "Daños severos"],
+            issues: ["Sin problemas", "Rayones superficiales", "Rayones profundos", "Abolladuras", "Pintura dañada"]
+        }
+    };
+
+    try {
+        if (!process.env.OPENAI_API_KEY) {
+            throw new Error('OpenAI API key not configured');
+        }
+
+        const componentType = prompt.toLowerCase().includes('llanta') ? 'tires' :
+                            prompt.toLowerCase().includes('espejo') ? 'mirrors' :
+                            prompt.toLowerCase().includes('placa') ? 'license_plates' :
+                            prompt.toLowerCase().includes('faro') ? 'headlights' :
+                            prompt.toLowerCase().includes('limpieza') ? 'cleanliness' :
+                            prompt.toLowerCase().includes('rayon') ? 'scratches' : 'general';
+
+        const conditions = componentConditions[componentType] || componentConditions.general;
+
+        const analysisPromises = images.map(async (imageBase64, index) => {
+            try {
+                const response = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: `Analiza la imagen de ${prompt} y responde en formato JSON:
+                                {
+                                    "component": "${prompt}",
+                                    "status": "Uno de: ${conditions.statuses.join(', ')}",
+                                    "issues": ["Problemas de: ${conditions.issues.join(', ')}"],
+                                    "details": "Descripción breve"
+                                }`
+                            },
+                            {
+                                role: 'user',
+                                content: [
+                                    { type: 'text', text: `Analiza esta imagen ${index + 1} de ${prompt}` },
+                                    { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
+                                ]
+                            }
+                        ],
+                        max_tokens: 300
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Error en la respuesta de OpenAI: ${response.status}`);
+                }
+
+                const data = await response.json();
+                const content = data.choices[0].message.content.trim();
+                const parsedResponse = JSON.parse(content.match(/\{[\s\S]*\}/)[0]);
+
+                if (!conditions.statuses.includes(parsedResponse.status)) {
+                    throw new Error('Estado no válido');
+                }
+
+                parsedResponse.issues = parsedResponse.issues.filter(issue => 
+                    conditions.issues.includes(issue)
+                );
+
+                return parsedResponse;
+
+            } catch (error) {
+                console.error(`Error en imagen ${index + 1}:`, error);
+                return {
+                    component: prompt,
+                    status: "Error",
+                    issues: [`Error en análisis: ${error.message}`],
+                    details: "Error procesando imagen"
+                };
+            }
+        });
+
+        const results = await Promise.all(analysisPromises);
+        return res.status(200).json({ results });
+
+    } catch (error) {
+        console.error('Error general:', error);
+        return res.status(500).json({ error: 'Error al procesar la solicitud' });
+    }
+}
+/*export default async function handler(req, res) {
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Método no permitido' });
+    }
+
     const { prompt, image } = req.body;
     if (!prompt || !image) {
         return res.status(400).json({ error: 'Se requiere un prompt y una imagen válida' });
@@ -143,7 +264,7 @@ export default async function handler(req, res) {
         console.error('❌ Error en el procesamiento:', error);
         return res.status(500).json({ error: 'Error al procesar la solicitud' });
     }
-}
+}*/
 /*export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Método no permitido' });
