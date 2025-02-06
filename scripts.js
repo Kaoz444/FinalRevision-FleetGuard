@@ -840,7 +840,66 @@ function initializeStatusButtons() {
         });
     });
 }
+//funcion para el siguiente item en la lista
 async function nextItem() {
+    console.log('nextItem fue llamado');
+    if (!checkRequirements()) {
+        return;
+    }
+
+    const item = inspectionItems[currentIndex];
+    const requiredPhotos = item.requiredPhotos ?? 1;
+    const currentPhotos = currentInspectionData[item.id]?.photos || [];
+    const comment = document.getElementById('commentBox')?.value.trim() || '';
+
+    if (requiredPhotos === 0) {
+        console.log(`El ítem "${item.name[currentLanguage]}" no requiere fotos, avanzando...`);
+        currentInspectionData[item.id] = {
+            ...currentInspectionData[item.id],
+            comment: comment,
+            status: 'No requiere evaluación',
+            issues: [],
+            aiComment: 'No se requiere análisis de IA para este ítem.'
+        };
+        cleanupMemory();
+        advanceToNextItem();
+        return;
+    }
+
+    if (currentPhotos.length < requiredPhotos) {
+        const missingPhotos = requiredPhotos - currentPhotos.length;
+        showNotification(`Faltan ${missingPhotos} fotos para completar este ítem.`, 'error');
+        return;
+    }
+
+    // 🔹 Obtener análisis de OpenAI
+    try {
+        showNotification('Analizando imágenes con OpenAI...', 'info');
+        const aiResults = await analyzePhotoWithOpenAI(currentPhotos, item.name.es);
+
+        console.log(`Resultados de IA para ${item.name[currentLanguage]}:`, aiResults);
+
+        currentInspectionData[item.id] = {
+            ...currentInspectionData[item.id],
+            comment: comment,
+            status: aiResults[0]?.status || 'No determinado',
+            issues: aiResults[0]?.issues || [],
+            aiComment: aiResults[0]?.details || 'No se pudo obtener información de IA.',
+            timestamp: new Date().toISOString()
+        };
+
+        showNotification('Análisis de OpenAI completado.');
+    } catch (error) {
+        console.error('Error al procesar con OpenAI:', error);
+        showNotification('Error al procesar las imágenes con OpenAI.', 'error');
+        currentInspectionData[item.id].aiComment = 'Error al procesar las imágenes con OpenAI.';
+    }
+
+    // Avanzar al siguiente ítem
+    advanceToNextItem();
+}
+
+/*async function nextItem() {
     console.log('nextItem fue llamado');
     if (!checkRequirements()) {
         return;
@@ -934,7 +993,7 @@ async function nextItem() {
         console.log('Inspección completada.');
         completeInspection();
     }
-}
+}*/
 
 function advanceToNextItem() {
     if (currentIndex < inspectionItems.length - 1) {
@@ -976,6 +1035,80 @@ function previousItem() {
 }
 //funcion para generar el PDF
 async function generateInspectionPDF(inspection) {
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) {
+        console.error('Biblioteca de generación de PDF no cargada');
+        return null;
+    }
+
+    try {
+        const doc = new jsPDF();
+        let y = 40;
+
+        doc.setFillColor(59, 130, 246);
+        doc.rect(0, 0, doc.internal.pageSize.getWidth(), 30, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(20);
+        doc.text('FleetGuard Inspection Report', 20, 20);
+
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(12);
+        const basicInfo = [
+            `Inspector: ${inspection.worker}`,
+            `Vehicle ID: ${inspection.truckId}`,
+            `Date: ${inspection.date}`
+        ];
+
+        basicInfo.forEach(info => {
+            doc.text(info, 20, y);
+            y += 10;
+        });
+
+        // 🔹 Agregar datos de inspección
+        Object.entries(inspection.data).forEach(([key, value]) => {
+            const item = inspectionItems.find(i => i.id === key);
+            if (!item) return;
+
+            if (y > doc.internal.pageSize.getHeight() - 60) {
+                doc.addPage();
+                y = 20;
+            }
+
+            y += 10;
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${item.name[currentLanguage]}`, 20, y);
+            y += 10;
+
+            doc.setFontSize(12);
+            doc.text(`Estado: ${value.status.toUpperCase()}`, 20, y);
+            y += 10;
+
+            if (value.issues.length > 0) {
+                doc.text(`Problemas detectados: ${value.issues.join(', ')}`, 20, y);
+                y += 10;
+            }
+
+            doc.setFont('helvetica', 'italic');
+            const aiLines = doc.splitTextToSize(`Análisis de IA: ${value.aiComment}`, 170);
+            doc.text(aiLines, 20, y);
+            y += aiLines.length * 6;
+        });
+
+        doc.setFontSize(10);
+        doc.text(`Generado: ${new Date().toLocaleString()}`, 20, doc.internal.pageSize.getHeight() - 10);
+
+        const filename = `FleetGuard_${inspection.truckId}_${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}.pdf`;
+        doc.save(filename);
+        return true;
+
+    } catch (error) {
+        console.error('Error generando PDF:', error);
+        return null;
+    }
+}
+
+/*async function generateInspectionPDF(inspection) {
     const { jsPDF } = window.jspdf;
     if (!jsPDF) {
         console.error('PDF generation library not loaded');
@@ -1109,168 +1242,7 @@ async function generateInspectionPDF(inspection) {
         console.error('Error generating PDF:', error);
         return null;
     }
-}
-/*async function generateInspectionPDF(inspection) {
-    const { jsPDF } = window.jspdf;
-    if (!jsPDF) {
-        console.error('PDF generation library not loaded');
-        showNotification('Error: PDF generation library not available', 'error');
-        return null;
-    }
-
-    try {
-        const doc = new jsPDF();
-
-        // Header with styling
-        doc.setFillColor(59, 130, 246);
-        doc.rect(0, 0, doc.internal.pageSize.getWidth(), 30, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(20);
-        doc.text('FleetGuard Inspection Report', 20, 20);
-
-        // Reset text color for body
-        doc.setTextColor(0, 0, 0);
-        let y = 40;
-        doc.setFontSize(12);
-
-        // Basic Info Section
-	const basicInfo = [
-	    `Inspector: ${inspection.worker}`,
-	    `Vehicle ID: ${inspection.truckId}`,
-	    `Model: ${inspection.truckModel || 'N/A'}`,
-	    `Year: ${inspection.truckYear || 'N/A'}`,
-	    `Date: ${inspection.date}`,
-	];
-
-        basicInfo.forEach(info => {
-            doc.text(info, 20, y);
-            y += 10;
-        });
-        y += 10;
-
-        // Overall metric
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Overall Vehicle Condition', 20, y);
-        y += 10;
-
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'normal');
-	const condition = {
-	    score: inspection.overall_condition,
-	    criticalCount: inspection.critical_count,
-	    warningCount: inspection.warning_count
-	};
-	
-	const conditionText = [
-	    `Puntuacion General: ${condition.score.toFixed(1)}%`,
-	    `Problemas Criticos: ${condition.criticalCount}`,
-	    `Problemas de Precaucion: ${condition.warningCount}`
-	];
-
-        conditionText.forEach(text => {
-            doc.text(text, 20, y);
-            y += 10;
-        });
-        y += 10;
-
-        // Inspection Items Section
-        Object.entries(inspection.data).forEach(([key, value]) => {
-            const item = inspectionItems.find(i => i.id === key);
-            if (!item) return;
-
-            if (y > doc.internal.pageSize.getHeight() - 60) {
-                doc.addPage();
-                y = 20;
-            }
-
-            // Item Header
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`${item.name[currentLanguage]} - Status: ${value.status.toUpperCase()}`, 20, y);
-            y += 10;
-
-            // Inspector Comments
-            if (value.comment) {
-                const commentLines = doc.splitTextToSize(`Inspector Comments: ${value.comment}`, 170);
-                doc.text(commentLines, 20, y);
-                y += commentLines.length * 6;
-            }
-
-            // AI Comments
-            if (value.aiComment) {
-                const aiCommentLines = doc.splitTextToSize(`AI Analysis: ${value.aiComment}`, 170);
-                doc.text(aiCommentLines, 20, y);
-                y += aiCommentLines.length * 6;
-            }
-
-            // Photos
-            if (value.photos && value.photos.length > 0) {
-                value.photos.forEach((photo, index) => {
-                    if (y + 70 > doc.internal.pageSize.getHeight() - 20) {
-                        doc.addPage();
-                        y = 20;
-                    }
-
-                    try {
-                        doc.addImage(photo, 'JPEG', 20, y, 50, 50);
-                        y += 55;
-                    } catch (error) {
-                        console.error(`Error adding image for photo ${index + 1}:`, error);
-                        doc.text(`Error: Unable to add image ${index + 1}`, 20, y);
-                        y += 10;
-                    }
-                });
-            }
-
-            y += 10; // Add spacing between items
-        });
-
-        // Footer
-        doc.setFontSize(10);
-        doc.setTextColor(128, 128, 128);
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 20, doc.internal.pageSize.getHeight() - 15);
-
-        const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
-        const filename = `FleetGuard_Inspection_${inspection.truckId}_${timestamp}.pdf`;
-
-        // Convert to base64
-        const pdfBase64 = doc.output('datauristring');
-
-        showNotification('Uploading PDF...', 'info');
-
-        // Upload as base64 to Supabase
-        const response = await fetch('/api/uploadPDF', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                pdfData: pdfBase64,
-                filename: filename
-            })
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || 'Failed to upload PDF');
-        }
-
-        const result = await response.json();
-        showNotification('PDF uploaded successfully', 'success');
-
-        // Save locally as well
-        doc.save(filename);
-
-        return result.url;
-
-    } catch (error) {
-        console.error('Error generating/uploading PDF:', error);
-        showNotification(`Error with PDF operation: ${error.message}`, 'error');
-        return null;
-    }
 }*/
-
 
 async function getTruckInfo(truckId) {
     // Simula una consulta a la base de datos o API
@@ -2283,115 +2255,43 @@ function evaluateComponentCondition(description) {
 
     return bestCondition;
 }*/
-async function analyzePhotoWithOpenAI(base64Images) {
-    console.log('Starting analyzePhotoWithOpenAI function...');
-
-    // Create and show overlay
-    const overlay = document.createElement('div');
-    overlay.className = 'processing-overlay';
-    overlay.innerHTML = `
-        <div class="processing-message">
-            <div class="loading-spinner"></div>
-            <p>Analyzing photo with AI...</p>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-
+async function analyzePhotoWithOpenAI(imageBase64Array, prompt) {
     try {
-        // Get current inspection item
-        const item = inspectionItems[currentIndex];
-        if (!item) {
-            throw new Error('No current inspection item found');
-        }
+        showNotification('Enviando imágenes a OpenAI...', 'info');
 
-        // Validate images
-        if (!Array.isArray(base64Images) || base64Images.length === 0) {
-            throw new Error('No images provided for analysis');
-        }
-
-        // Process each image
-        const analysisPromises = base64Images.map(async (base64Image, index) => {
-            // Ensure base64Image is properly formatted
-            const imageData = base64Image.startsWith('data:image') 
-                ? base64Image.split(',')[1] 
-                : base64Image;
-
-            const payload = {
-                prompt: item.name[currentLanguage],
-                images: [imageData]  // Send as array even for single image
-            };
-
-            try {
-                const response = await fetch('/api/openai', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(payload)
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-                
-                // Validate the response format
-                if (!data.results || !Array.isArray(data.results)) {
-                    throw new Error('Invalid response format from API');
-                }
-
-                const result = data.results[0]; // Get first result
-                return {
-                    component: item.name[currentLanguage],
-                    status: result.status,
-                    issues: result.issues,
-                    details: result.details
-                };
-
-            } catch (error) {
-                console.error(`Error analyzing image ${index + 1}:`, error);
-                return {
-                    component: item.name[currentLanguage],
-                    status: 'Error',
-                    issues: [`Error analyzing image: ${error.message}`],
-                    details: 'Analysis failed'
-                };
-            }
+        const response = await fetch('/api/openai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, images: imageBase64Array })
         });
 
-        // Wait for all analyses to complete
-        const results = await Promise.all(analysisPromises);
+        if (!response.ok) {
+            throw new Error(`Error en la API de OpenAI: ${response.status}`);
+        }
 
-        // Format the results into a single string
-        const formattedResults = results.map((result, index) => {
-            return `Image ${index + 1}:\n` +
-                   `Status: ${result.status}\n` +
-                   `Issues: ${result.issues.join(', ') || 'None'}\n` +
-                   `Details: ${result.details}`;
-        }).join('\n\n');
+        const { results } = await response.json();
 
-        return formattedResults;
+        // Validar que la respuesta sea la esperada
+        if (!Array.isArray(results) || results.length === 0) {
+            throw new Error('Respuesta inesperada de OpenAI.');
+        }
+
+        console.log('Resultados de OpenAI:', results);
+
+        return results.map((result, index) => ({
+            imageIndex: index + 1,
+            status: result.status,
+            issues: result.issues,
+            details: result.details
+        }));
 
     } catch (error) {
-        console.error('Error in analyzePhotoWithOpenAI:', error);
-        return `Error analyzing photos: ${error.message}`;
-    } finally {
-        // Always remove the overlay
-        document.body.removeChild(overlay);
+        console.error('Error al analizar las imágenes:', error);
+        showNotification('Error al analizar las imágenes con OpenAI.', 'error');
+        return [{ status: 'Error', issues: ['Error en análisis'], details: error.message }];
     }
 }
-// Helper function to validate and process images before sending to API
-function prepareImagesForAnalysis(images) {
-    return images.map(image => {
-        // Remove data URL prefix if present
-        if (image.startsWith('data:image')) {
-            return image.split(',')[1];
-        }
-        return image;
-    });
-}
+
 /*async function analyzePhotoWithOpenAI(base64Images) {
     console.log('Starting analyzePhotoWithOpenAI function...');
 
