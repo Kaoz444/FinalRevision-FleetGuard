@@ -1,4 +1,3 @@
-// Actualizacion con cambios con handlers para manejar mejor el endpoint
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method not allowed' });
@@ -6,19 +5,20 @@ export default async function handler(req, res) {
 
     const { prompt, images } = req.body;
 
-    // Validate required fields
+    // Validación de los datos recibidos
     if (!prompt || !images || !Array.isArray(images) || images.length === 0) {
         return res.status(400).json({ error: 'Valid prompt and images are required' });
     }
 
     try {
-        // Get component type and conditions
-        const componentType = getComponentType(prompt);
-        const conditions = componentConditions[componentType] || componentConditions.general;
+        if (!process.env.OPENAI_API_KEY) {
+            throw new Error('OpenAI API key not configured');
+        }
 
-        // Process all images
-        const analysisPromises = images.map(async (imageBase64) => {
+        // Procesamos cada imagen por separado
+        const analysisPromises = images.map(async (imageBase64, index) => {
             try {
+                // 🔹 Paso 1: Obtener descripción natural de la imagen
                 const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -30,23 +30,19 @@ export default async function handler(req, res) {
                         messages: [
                             {
                                 role: 'system',
-                                content: `You are an expert vehicle inspector analyzing images of ${prompt}. 
-                                         Provide detailed analysis focusing on physical condition, damage, wear, and cleanliness.
-                                         Use only these predefined statuses: ${conditions.statuses.join(', ')}
-                                         And these predefined issues: ${conditions.issues.join(', ')}`
+                                content: `Eres un inspector experto en vehículos. Analiza la imagen y describe su condición física en lenguaje natural, sin estructurar la información. 
+                                Incluye cualquier problema visible como daños, suciedad, desgaste, rayones o defectos.`
                             },
                             {
                                 role: 'user',
                                 content: [
                                     { 
                                         type: 'text', 
-                                        text: `Analyze this ${prompt} image and describe any visible issues or damage` 
+                                        text: `Describe la condición física del siguiente componente del vehículo: ${prompt}` 
                                     },
                                     { 
                                         type: 'image_url',
-                                        image_url: {
-                                            url: `data:image/jpeg;base64,${imageBase64}`
-                                        }
+                                        image_url: { url: `data:image/jpeg;base64,${imageBase64}` }
                                     }
                                 ]
                             }
@@ -60,21 +56,19 @@ export default async function handler(req, res) {
                 }
 
                 const data = await openAIResponse.json();
-                const analysisText = data.choices[0].message.content;
+                const analysisText = data.choices[0].message.content.trim();
 
-                // Parse the analysis to match our required format
-                const status = determineStatus(analysisText, conditions.statuses);
-                const detectedIssues = extractIssues(analysisText, conditions.issues);
+                // 🔹 Paso 2: Analizar la respuesta de OpenAI y categorizarla
+                const processedAnalysis = processAIAnalysis(analysisText, prompt);
 
                 return {
                     component: prompt,
-                    status: status,
-                    issues: detectedIssues,
+                    ...processedAnalysis,
                     details: analysisText
                 };
 
             } catch (error) {
-                console.error('Error processing image:', error);
+                console.error(`Error processing image ${index + 1}:`, error);
                 return {
                     component: prompt,
                     status: 'Error',
@@ -93,24 +87,62 @@ export default async function handler(req, res) {
     }
 }
 
-// Helper function to determine status from analysis text
-function determineStatus(analysisText, validStatuses) {
-    for (const status of validStatuses) {
-        if (analysisText.toLowerCase().includes(status.toLowerCase())) {
-            return status;
+// 🔹 Función que analiza la respuesta de OpenAI y la categoriza
+function processAIAnalysis(description, prompt) {
+    const conditions = {
+        tires: {
+            statuses: ["Óptimo", "Desgaste normal", "Desgaste avanzado", "Desinflado", "Ponchado", "Crítico"],
+            issues: ["Sin problemas", "Presión baja", "Desgaste irregular", "Desgaste en bordes", "Grietas", "Objeto punzante", "Deformación"]
+        },
+        mirrors: {
+            statuses: ["Óptimo", "Funcional", "Dañado", "Crítico"],
+            issues: ["Sin problemas", "Rayones menores", "Rajadura", "Desajustado", "Visibilidad reducida", "Roto"]
+        },
+        license_plates: {
+            statuses: ["Óptimo", "Legible", "Parcialmente legible", "Ilegible"],
+            issues: ["Sin problemas", "Suciedad", "Decoloración", "Dobladura", "Daño físico", "Baja reflectividad"]
+        },
+        headlights: {
+            statuses: ["Óptimo", "Funcional", "Deteriorado", "No funcional"],
+            issues: ["Sin problemas", "Opacidad", "Humedad", "Grietas", "Bajo brillo", "Daño estructural"]
+        },
+        cleanliness: {
+            statuses: ["Excelente", "Aceptable", "Requiere limpieza", "Inaceptable"],
+            issues: ["Sin problemas", "Polvo", "Manchas", "Suciedad excesiva", "Residuos"]
+        },
+        scratches: {
+            statuses: ["Sin daños", "Daños menores", "Daños moderados", "Daños severos"],
+            issues: ["Sin problemas", "Rayones superficiales", "Rayones profundos", "Abolladuras", "Pintura dañada"]
         }
-    }
-    return validStatuses[0]; // Default to first status if none found
+    };
+
+    // Determinar el tipo de componente
+    const componentType = getComponentType(prompt);
+    const validConditions = conditions[componentType] || conditions.general;
+
+    let status = "Óptimo";
+    let detectedIssues = [];
+
+    // Analizar el texto y categorizar la información
+    validConditions.statuses.forEach(s => {
+        if (description.toLowerCase().includes(s.toLowerCase())) {
+            status = s;
+        }
+    });
+
+    validConditions.issues.forEach(issue => {
+        if (description.toLowerCase().includes(issue.toLowerCase())) {
+            detectedIssues.push(issue);
+        }
+    });
+
+    return {
+        status,
+        issues: detectedIssues.length > 0 ? detectedIssues : ["Sin problemas"]
+    };
 }
 
-// Helper function to extract issues from analysis text
-function extractIssues(analysisText, validIssues) {
-    return validIssues.filter(issue => 
-        analysisText.toLowerCase().includes(issue.toLowerCase())
-    );
-}
-
-// Helper function to get component type
+// 🔹 Función para determinar el tipo de componente según el prompt
 function getComponentType(prompt) {
     const promptLower = prompt.toLowerCase();
     if (promptLower.includes('llanta')) return 'tires';
@@ -121,6 +153,7 @@ function getComponentType(prompt) {
     if (promptLower.includes('rayon')) return 'scratches';
     return 'general';
 }
+
 /*export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Método no permitido' });
