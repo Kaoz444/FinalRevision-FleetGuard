@@ -1038,6 +1038,192 @@ function previousItem() {
 async function generateInspectionPDF(inspection) {
     const { jsPDF } = window.jspdf;
     if (!jsPDF) {
+        console.error('PDF generation library not loaded');
+        return null;
+    }
+
+    try {
+        const doc = new jsPDF();
+        let y = 40;
+
+        // Header with company logo and title
+        doc.setFillColor(59, 130, 246);
+        doc.rect(0, 0, doc.internal.pageSize.getWidth(), 30, 'F');
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(20);
+        doc.text('FleetGuard Inspection Report', 20, 20);
+
+        // Basic inspection information
+        doc.setTextColor(0, 0, 0);
+        doc.setFontSize(12);
+        const basicInfo = [
+            `Inspector: ${inspection.worker}`,
+            `Vehicle ID: ${inspection.truckId}`,
+            `Date: ${new Date(inspection.start_time).toLocaleString()}`,
+            `Duration: ${Math.round(inspection.duration / 60)} minutes`,
+            `Overall Condition: ${inspection.overall_condition}%`,
+            `Critical Issues: ${inspection.critical_count}`,
+            `Warnings: ${inspection.warning_count}`
+        ];
+
+        basicInfo.forEach(info => {
+            doc.text(info, 20, y);
+            y += 10;
+        });
+
+        // Inspection Items
+        Object.entries(inspection.data).forEach(([itemId, itemData]) => {
+            const item = inspectionItems.find(i => i.id === itemId);
+            if (!item) return;
+
+            // Check if we need a new page
+            if (y > doc.internal.pageSize.getHeight() - 60) {
+                doc.addPage();
+                y = 20;
+            }
+
+            y += 15;
+            
+            // Item header
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${item.name[currentLanguage]}`, 20, y);
+            y += 10;
+
+            // Status and condition
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'normal');
+            const statusColor = 
+                itemData.status === 'critical' ? '#ef4444' : 
+                itemData.status === 'warning' ? '#f59e0b' : '#10b981';
+            doc.setTextColor(...hexToRGB(statusColor));
+            doc.text(`Status: ${itemData.status.toUpperCase()}`, 20, y);
+            doc.setTextColor(0, 0, 0);
+            y += 10;
+
+            // AI Analysis
+            if (itemData.aiComment) {
+                doc.setFont('helvetica', 'italic');
+                const aiLines = doc.splitTextToSize(`AI Analysis: ${itemData.aiComment}`, 170);
+                doc.text(aiLines, 20, y);
+                y += aiLines.length * 6;
+            }
+
+            // Issues
+            if (itemData.issues && itemData.issues.length > 0) {
+                y += 5;
+                doc.setFont('helvetica', 'bold');
+                doc.text('Detected Issues:', 20, y);
+                y += 7;
+                doc.setFont('helvetica', 'normal');
+                itemData.issues.forEach(issue => {
+                    doc.text(`• ${issue}`, 25, y);
+                    y += 7;
+                });
+            }
+
+            // Inspector Comments
+            if (itemData.comment) {
+                y += 5;
+                doc.setFont('helvetica', 'bold');
+                doc.text('Inspector Comments:', 20, y);
+                y += 7;
+                doc.setFont('helvetica', 'normal');
+                const commentLines = doc.splitTextToSize(itemData.comment, 165);
+                doc.text(commentLines, 25, y);
+                y += commentLines.length * 7;
+            }
+
+            // Add photos if available
+            if (itemData.photos && itemData.photos.length > 0) {
+                y += 10;
+                const photoWidth = 60;
+                const photoHeight = 45;
+                let xOffset = 20;
+
+                itemData.photos.forEach((photo, photoIndex) => {
+                    if (xOffset + photoWidth > doc.internal.pageSize.getWidth() - 20) {
+                        xOffset = 20;
+                        y += photoHeight + 20;
+                    }
+
+                    if (y + photoHeight > doc.internal.pageSize.getHeight() - 20) {
+                        doc.addPage();
+                        y = 20;
+                    }
+
+                    try {
+                        doc.addImage(photo, 'JPEG', xOffset, y, photoWidth, photoHeight);
+                        doc.setFontSize(8);
+                        doc.text(`Photo ${photoIndex + 1}`, xOffset, y + photoHeight + 5);
+                        xOffset += photoWidth + 10;
+                    } catch (error) {
+                        console.error(`Error adding photo ${photoIndex + 1}:`, error);
+                    }
+                });
+
+                y += photoHeight + 20;
+            }
+
+            y += 10; // Space between items
+        });
+
+        // Footer
+        doc.setFontSize(10);
+        doc.text(`Generated: ${new Date().toLocaleString()}`, 20, doc.internal.pageSize.getHeight() - 10);
+
+        // Generate filename
+        const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
+        const filename = `FleetGuard_${inspection.truckId}_${timestamp}.pdf`;
+
+        // Save PDF
+        doc.save(filename);
+
+        // Upload to backend if not in demo mode
+        if (currentWorker.id !== '000') {
+            const pdfBase64 = doc.output('datauristring');
+            try {
+                const response = await fetch('/api/uploadPDF', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        pdfData: pdfBase64, 
+                        filename,
+                        inspectionId: inspection.id
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to upload PDF');
+                }
+
+                const { url } = await response.json();
+                return url;
+            } catch (error) {
+                console.error('Error uploading PDF:', error);
+                showNotification('PDF generated but upload failed', 'warning');
+                return null;
+            }
+        }
+
+        return true;
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        showNotification('Error generating PDF', 'error');
+        return null;
+    }
+}
+
+// Helper function to convert hex color to RGB
+function hexToRGB(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return [r, g, b];
+}
+/*async function generateInspectionPDF(inspection) {
+    const { jsPDF } = window.jspdf;
+    if (!jsPDF) {
         console.error('Biblioteca de generación de PDF no cargada');
         return null;
     }
@@ -1107,7 +1293,7 @@ async function generateInspectionPDF(inspection) {
         console.error('Error generando PDF:', error);
         return null;
     }
-}
+}*/
 
 /*async function generateInspectionPDF(inspection) {
     const { jsPDF } = window.jspdf;
@@ -1441,6 +1627,59 @@ function updateCharCount() {
 // Image Processing and Camera Functions
 async function openCamera() {
     const item = inspectionItems[currentIndex];
+    const maxPhotos = item.requiredPhotos || 0;
+
+    if (!currentInspectionData[item.id]) {
+        currentInspectionData[item.id] = { photos: [] };
+    }
+
+    if (currentInspectionData[item.id].photos?.length >= maxPhotos) {
+        showNotification(`Máximo ${maxPhotos} fotos permitidas`, 'warning');
+        return;
+    }
+
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+
+    input.addEventListener('change', async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const processedImage = await handleImageProcessing(file);
+        if (processedImage) {
+            if (!currentInspectionData[item.id].photos) {
+                currentInspectionData[item.id].photos = [];
+            }
+            currentInspectionData[item.id].photos.push(processedImage);
+            updatePhotoPreview(item.id);
+        }
+    });
+
+    input.click();
+}
+//funcion para generar el prompt dinamico
+function generateAIPrompt(item) {
+    const basePrompt = `Analiza detalladamente la siguiente imagen de ${item.name[currentLanguage]} y describe:
+1. Estado físico general
+2. Cualquier daño o desgaste visible
+3. Problemas específicos que requieran atención
+4. Recomendaciones basadas en lo observado`;
+
+    const specificPrompts = {
+        tires: 'Enfócate en el desgaste del dibujo, presión visible, deformaciones o daños en la estructura.',
+        mirrors: 'Evalúa la integridad del espejo, sujeción, visibilidad y cualquier daño en el cristal.',
+        license_plates: 'Verifica la legibilidad, estado físico y sujeción de la placa.',
+        headlights_taillights: 'Examina la claridad del lente, grietas, humedad interior y funcionamiento visible.',
+        cleanliness: 'Evalúa el nivel de suciedad, manchas o residuos visibles.',
+        compartments: 'Inspecciona el estado de las bisagras, cerraduras y superficies interiores.'
+    };
+
+    return `${basePrompt}\n\n${specificPrompts[item.id] || ''}`;
+}
+/*async function openCamera() {
+    const item = inspectionItems[currentIndex];
     const requiredPhotos = item.requiredPhotos || 0;
 
     if (requiredPhotos === 0) {
@@ -1485,7 +1724,7 @@ async function openCamera() {
     });
 
     input.click();
-}
+}*/
 
 function updatePhotoPreview(itemId) {
     const photoContainer = document.getElementById('photoPreviewContainer'); 
@@ -2153,48 +2392,66 @@ async function resizeImage(file, maxWidth = 1280, maxHeight = 960, quality = 0.7
     });
 }*/
 
-async function analyzePhotoWithOpenAI(imageFiles, prompt) {
+async function analyzePhotoWithOpenAI(photos, itemName) {
+    const item = inspectionItems[currentIndex];
+    const prompt = generateAIPrompt(item);
+
     try {
-        showNotification('Redimensionando imágenes...', 'info');
-
-        // 🔹 Redimensionar todas las imágenes antes de enviarlas a OpenAI
-        const resizedImages = await Promise.all(imageFiles.map(file => resizeImage(file)));
-
-        console.log('Imágenes redimensionadas:', resizedImages);
-
-        showNotification('Enviando imágenes a OpenAI...', 'info');
+        showNotification('Analizando imágenes...', 'info');
 
         const response = await fetch('/api/openai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, images: resizedImages })
+            body: JSON.stringify({ 
+                prompt,
+                images: photos,
+                itemType: item.id
+            })
         });
 
         if (!response.ok) {
-            throw new Error(`Error en la API de OpenAI: ${response.status}`);
+            throw new Error(`Error en API: ${response.status}`);
         }
 
-        const { results } = await response.json();
-
-        // Validar que la respuesta sea la esperada
-        if (!Array.isArray(results) || results.length === 0) {
-            throw new Error('Respuesta inesperada de OpenAI.');
-        }
-
-        console.log('Resultados de OpenAI:', results);
-
-        return results.map((result, index) => ({
-            imageIndex: index + 1,
-            status: result.status,
-            issues: result.issues,
-            details: result.details
-        }));
+        const data = await response.json();
+        return processAIResponse(data.results, item);
 
     } catch (error) {
-        console.error('Error al analizar las imágenes:', error);
-        showNotification('Error al analizar las imágenes con OpenAI.', 'error');
-        return [{ status: 'Error', issues: ['Error en análisis'], details: error.message }];
+        console.error('Error en análisis:', error);
+        showNotification('Error en análisis de imágenes', 'error');
+        return [{
+            status: 'error',
+            issues: ['Error en análisis'],
+            details: error.message
+        }];
     }
+}
+
+function processAIResponse(aiResponse, item) {
+    // Process the AI's natural language response into structured data
+    const conditions = {
+        critical: ['crítico', 'severo', 'urgente', 'roto', 'peligroso'],
+        warning: ['desgaste', 'deterioro', 'atención', 'moderado'],
+        ok: ['bueno', 'óptimo', 'excelente', 'normal']
+    };
+
+    return aiResponse.map(response => {
+        const responseLower = response.details.toLowerCase();
+        let status = 'ok';
+
+        // Determine status based on keywords
+        if (conditions.critical.some(word => responseLower.includes(word))) {
+            status = 'critical';
+        } else if (conditions.warning.some(word => responseLower.includes(word))) {
+            status = 'warning';
+        }
+
+        return {
+            status,
+            issues: extractIssues(responseLower),
+            details: response.details
+        };
+    });
 }
 
 
