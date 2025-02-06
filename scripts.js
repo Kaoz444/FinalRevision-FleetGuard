@@ -2382,7 +2382,16 @@ async function analyzePhotoWithOpenAI(base64Images) {
         document.body.removeChild(overlay);
     }
 }
-
+// Helper function to validate and process images before sending to API
+function prepareImagesForAnalysis(images) {
+    return images.map(image => {
+        // Remove data URL prefix if present
+        if (image.startsWith('data:image')) {
+            return image.split(',')[1];
+        }
+        return image;
+    });
+}
 /*async function analyzePhotoWithOpenAI(base64Images) {
     console.log('Starting analyzePhotoWithOpenAI function...');
 
