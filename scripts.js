@@ -130,7 +130,7 @@ const inspectionItems = [
             en: 'Confirm that both plates are securely attached and clearly visible.', 
             es: 'Confirme que ambas placas estén firmemente sujetas y sean claramente visibles.' 
         },
-        requiredPhotos: 0  // Se requieren 2 fotos (placa delantera y trasera)
+        requiredPhotos: 2  // Se requieren 2 fotos (placa delantera y trasera)
     },
     { 
         id: 'cleanliness', 
@@ -170,7 +170,7 @@ const inspectionItems = [
             en: 'Check the compartments for cleanliness and general condition.', 
             es: 'Verifique la limpieza y el estado general de las gavetas.' 
         },
-        requiredPhotos: 0  // Se requieren 2 fotos (lado izquierdo y derecho)
+        requiredPhotos: 2  // Se requieren 2 fotos (lado izquierdo y derecho)
     }
 ];
 
