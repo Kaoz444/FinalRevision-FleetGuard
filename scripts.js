@@ -14,7 +14,8 @@ let inspectionStartTime = null;
 let inspectionEndTime = null;
 let currentPage = 1;
 let workers = {};
-//declarada al inicio para evitar errores
+
+//Declarada al inicio para evitar errores
 //Funcion para el manejo de las fotos y optimizacion
 function cleanupMemory() {
     // Cleanup image data
