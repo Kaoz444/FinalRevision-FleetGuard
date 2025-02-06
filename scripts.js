@@ -2286,7 +2286,7 @@ function evaluateComponentCondition(description) {
 async function analyzePhotoWithOpenAI(base64Images) {
     console.log('Starting analyzePhotoWithOpenAI function...');
 
-    // Crear y mostrar overlay
+    // Create and show overlay
     const overlay = document.createElement('div');
     overlay.className = 'processing-overlay';
     overlay.innerHTML = `
@@ -2297,84 +2297,88 @@ async function analyzePhotoWithOpenAI(base64Images) {
     `;
     document.body.appendChild(overlay);
 
-    const item = inspectionItems[currentIndex];
-
-    if (!item) {
-        console.error('No current inspection item found!');
-        document.body.removeChild(overlay);
-        return 'Error: No current inspection item found';
-    }
-
-    const componentName = item.name[currentLanguage];
-    console.log('Current inspection item:', JSON.stringify(item, null, 2));
-    console.log('Component name:', componentName);
-    console.log('Base64 images count:', base64Images.length);
-
-    // Si el ítem no requiere fotos, salir de la función
-    if (item.requiredPhotos === 0) {
-        console.log(`No photo analysis required for component: ${componentName}`);
-        document.body.removeChild(overlay);
-        return `Component: ${componentName}\nStatus: No photo analysis required`;
-    }
-
-    if (!Array.isArray(base64Images) || base64Images.length === 0) {
-        console.error('No images provided for analysis');
-        document.body.removeChild(overlay);
-        return `Error: No images provided for analysis for ${componentName}`;
-    }
-
     try {
-        const responses = await Promise.allSettled(
-            base64Images.map(async (base64Image, index) => {
-                const payload = {
-                    prompt: componentName,
-                    image: base64Image.split(',')[1] // Enviar solo el contenido Base64 sin encabezado
-                };
+        // Get current inspection item
+        const item = inspectionItems[currentIndex];
+        if (!item) {
+            throw new Error('No current inspection item found');
+        }
 
-                console.log(`Payload enviado al backend para imagen ${index + 1}:`, JSON.stringify(payload, null, 2));
+        // Validate images
+        if (!Array.isArray(base64Images) || base64Images.length === 0) {
+            throw new Error('No images provided for analysis');
+        }
 
+        // Process each image
+        const analysisPromises = base64Images.map(async (base64Image, index) => {
+            // Ensure base64Image is properly formatted
+            const imageData = base64Image.startsWith('data:image') 
+                ? base64Image.split(',')[1] 
+                : base64Image;
+
+            const payload = {
+                prompt: item.name[currentLanguage],
+                images: [imageData]  // Send as array even for single image
+            };
+
+            try {
                 const response = await fetch('/api/openai', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(payload)
                 });
 
-                console.log(`Response status for image ${index + 1}:`, response.status);
-
                 if (!response.ok) {
-                    const errorDetails = await response.text();
-                    console.error(`HTTP error for image ${index + 1}:`, response.status, errorDetails);
-                    return `Error processing image ${index + 1}: ${errorDetails}`;
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
                 }
 
                 const data = await response.json();
-                console.log(`Response data for image ${index + 1}:`, JSON.stringify(data, null, 2));
-
-                if (data.error) {
-                    console.error(`Error in AI response for image ${index + 1}:`, data.error);
-                    return `Error processing image ${index + 1}: ${data.error}`;
+                
+                // Validate the response format
+                if (!data.results || !Array.isArray(data.results)) {
+                    throw new Error('Invalid response format from API');
                 }
 
-                if (data.result?.component && data.result?.status) {
-                    return `Component: ${data.result.component}\nStatus: ${data.result.status}\nIssues: ${data.result.issues.join(', ') || 'Ninguno'}`;
-                } else {
-                    console.error(`Invalid response format for image ${index + 1}:`, JSON.stringify(data, null, 2));
-                    return `Error: Invalid response format for image ${index + 1}`;
-                }
-            })
-        );
+                const result = data.results[0]; // Get first result
+                return {
+                    component: item.name[currentLanguage],
+                    status: result.status,
+                    issues: result.issues,
+                    details: result.details
+                };
 
-        const processedResponses = responses.map((result, index) => {
-            return result.status === 'fulfilled' ? result.value : `Error processing image ${index + 1}: ${result.reason}`;
+            } catch (error) {
+                console.error(`Error analyzing image ${index + 1}:`, error);
+                return {
+                    component: item.name[currentLanguage],
+                    status: 'Error',
+                    issues: [`Error analyzing image: ${error.message}`],
+                    details: 'Analysis failed'
+                };
+            }
         });
 
-        console.log('All responses processed:', JSON.stringify(processedResponses, null, 2));
-        return processedResponses.join('\n');
+        // Wait for all analyses to complete
+        const results = await Promise.all(analysisPromises);
+
+        // Format the results into a single string
+        const formattedResults = results.map((result, index) => {
+            return `Image ${index + 1}:\n` +
+                   `Status: ${result.status}\n` +
+                   `Issues: ${result.issues.join(', ') || 'None'}\n` +
+                   `Details: ${result.details}`;
+        }).join('\n\n');
+
+        return formattedResults;
 
     } catch (error) {
-        console.error('Unexpected error analyzing photos:', error);
-        return 'Error analyzing photos';
+        console.error('Error in analyzePhotoWithOpenAI:', error);
+        return `Error analyzing photos: ${error.message}`;
     } finally {
+        // Always remove the overlay
         document.body.removeChild(overlay);
     }
 }
