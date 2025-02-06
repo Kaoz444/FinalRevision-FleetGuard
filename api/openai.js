@@ -1,4 +1,127 @@
+// Update the endpoint handler for OpenAI API
 export default async function handler(req, res) {
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    const { prompt, images } = req.body;
+
+    // Validate required fields
+    if (!prompt || !images || !Array.isArray(images) || images.length === 0) {
+        return res.status(400).json({ error: 'Valid prompt and images are required' });
+    }
+
+    try {
+        // Get component type and conditions
+        const componentType = getComponentType(prompt);
+        const conditions = componentConditions[componentType] || componentConditions.general;
+
+        // Process all images
+        const analysisPromises = images.map(async (imageBase64) => {
+            try {
+                const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4o',
+                        messages: [
+                            {
+                                role: 'system',
+                                content: `You are an expert vehicle inspector analyzing images of ${prompt}. 
+                                         Provide detailed analysis focusing on physical condition, damage, wear, and cleanliness.
+                                         Use only these predefined statuses: ${conditions.statuses.join(', ')}
+                                         And these predefined issues: ${conditions.issues.join(', ')}`
+                            },
+                            {
+                                role: 'user',
+                                content: [
+                                    { 
+                                        type: 'text', 
+                                        text: `Analyze this ${prompt} image and describe any visible issues or damage` 
+                                    },
+                                    { 
+                                        type: 'image_url',
+                                        image_url: {
+                                            url: `data:image/jpeg;base64,${imageBase64}`
+                                        }
+                                    }
+                                ]
+                            }
+                        ],
+                        max_tokens: 300
+                    })
+                });
+
+                if (!openAIResponse.ok) {
+                    throw new Error(`OpenAI API error: ${openAIResponse.status}`);
+                }
+
+                const data = await openAIResponse.json();
+                const analysisText = data.choices[0].message.content;
+
+                // Parse the analysis to match our required format
+                const status = determineStatus(analysisText, conditions.statuses);
+                const detectedIssues = extractIssues(analysisText, conditions.issues);
+
+                return {
+                    component: prompt,
+                    status: status,
+                    issues: detectedIssues,
+                    details: analysisText
+                };
+
+            } catch (error) {
+                console.error('Error processing image:', error);
+                return {
+                    component: prompt,
+                    status: 'Error',
+                    issues: ['Error in analysis'],
+                    details: error.message
+                };
+            }
+        });
+
+        const results = await Promise.all(analysisPromises);
+        return res.status(200).json({ results });
+
+    } catch (error) {
+        console.error('General error:', error);
+        return res.status(500).json({ error: 'Error processing request' });
+    }
+}
+
+// Helper function to determine status from analysis text
+function determineStatus(analysisText, validStatuses) {
+    for (const status of validStatuses) {
+        if (analysisText.toLowerCase().includes(status.toLowerCase())) {
+            return status;
+        }
+    }
+    return validStatuses[0]; // Default to first status if none found
+}
+
+// Helper function to extract issues from analysis text
+function extractIssues(analysisText, validIssues) {
+    return validIssues.filter(issue => 
+        analysisText.toLowerCase().includes(issue.toLowerCase())
+    );
+}
+
+// Helper function to get component type
+function getComponentType(prompt) {
+    const promptLower = prompt.toLowerCase();
+    if (promptLower.includes('llanta')) return 'tires';
+    if (promptLower.includes('espejo')) return 'mirrors';
+    if (promptLower.includes('placa')) return 'license_plates';
+    if (promptLower.includes('faro')) return 'headlights';
+    if (promptLower.includes('limpieza')) return 'cleanliness';
+    if (promptLower.includes('rayon')) return 'scratches';
+    return 'general';
+}
+/*export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Método no permitido' });
     }
@@ -118,7 +241,7 @@ export default async function handler(req, res) {
         console.error('Error general:', error);
         return res.status(500).json({ error: 'Error al procesar la solicitud' });
     }
-}
+}*/
 /*export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Método no permitido' });
