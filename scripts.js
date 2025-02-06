@@ -2049,6 +2049,65 @@ document.addEventListener('DOMContentLoaded', () => {
 async function resizeImage(file, maxWidth = 1280, maxHeight = 960, quality = 0.75) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
+
+        reader.onload = (e) => {
+            const img = new Image();
+
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext('2d');
+
+                // 🔹 Validar formato de imagen antes de procesarla
+                if (!img.src.startsWith('data:image/')) {
+                    return reject(new Error('Formato de imagen no válido.'));
+                }
+
+                // 🔹 Calcular nuevas dimensiones
+                let width = img.width;
+                let height = img.height;
+
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                // 🔹 Ajustar tamaño del canvas
+                canvas.width = width;
+                canvas.height = height;
+
+                // 🔹 Dibujar y comprimir la imagen
+                ctx.drawImage(img, 0, 0, width, height);
+
+                // 🔹 Convertir a base64 en formato JPG
+                const resizedBase64 = canvas.toDataURL('image/jpeg', quality);
+
+                // 🔹 Validar que la imagen redimensionada tiene un formato válido
+                if (!resizedBase64.startsWith('data:image/jpeg;base64,')) {
+                    return reject(new Error('Error al convertir imagen a base64.'));
+                }
+
+                resolve(resizedBase64);
+            };
+
+            img.onerror = () => reject(new Error('Error al cargar la imagen'));
+            img.src = e.target.result;
+        };
+
+        reader.onerror = () => reject(new Error('Error al leer el archivo'));
+        reader.readAsDataURL(file);
+    });
+}
+
+/*async function resizeImage(file, maxWidth = 1280, maxHeight = 960, quality = 0.75) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
         
         reader.onload = (e) => {
             const img = new Image();
@@ -2091,178 +2150,23 @@ async function resizeImage(file, maxWidth = 1280, maxHeight = 960, quality = 0.7
         reader.onerror = () => reject(new Error('Error reading file'));
         reader.readAsDataURL(file);
     });
-}
-//funcion principal de analisis de IA con validaciones extras de funciones
-/*async function analyzePhotoWithOpenAI(base64Images) {
-    console.log('Starting analyzePhotoWithOpenAI function...');
-
-    // Crear y mostrar overlay
-	const overlay = document.createElement('div');
-	overlay.className = 'processing-overlay';
-	overlay.innerHTML = `
-	    <div class="processing-message">
-	        <div class="loading-spinner"></div>
-	        <p>Analyzing photo with AI...</p>
-	    </div>
-	`;
-	document.body.appendChild(overlay);
-	
-	const item = inspectionItems[currentIndex];
-	
-	if (!item) {
-	    console.error('No current inspection item found!');
-	    document.body.removeChild(overlay); 
-	    return 'Error: No current inspection item found';
-	}
-	
-	const componentName = item.name[currentLanguage];
-	console.log('Current inspection item:', JSON.stringify(item, null, 2));
-	console.log('Component name:', componentName);
-	console.log('Base64 images count:', base64Images.length);
-	
-	if (item.requiredPhotos === 0) {
-	    console.log(`No photo analysis required for component: ${componentName}`);
-	    document.body.removeChild(overlay); 
-	    return `Component: ${componentName}\nStatus: No photo analysis required`;
-	}
-	
-	if (!Array.isArray(base64Images) || base64Images.length === 0) {
-	    console.error('No images provided for analysis');
-	    document.body.removeChild(overlay);
-	    return `Error: No images provided for analysis for ${componentName}`;
-	}
-	
-	try {
-	    const responses = await Promise.allSettled(
-	        base64Images.map(async (base64Image, index) => {
-	            return await analyzeSinglePhotoWithOpenAI(base64Image, componentName, index);
-	        })
-	    );
-	
-	    const processedResponses = responses.map((result, index) => {
-	        if (result.status === 'fulfilled') {
-	            return result.value;
-	        } else {
-	            console.error(`Error processing image ${index + 1}:`, result.reason);
-	            return `Error processing image ${index + 1}: ${result.reason.message}`;
-	        }
-	    });
-	
-	    console.log('All responses processed:', JSON.stringify(processedResponses, null, 2));
-	    return processedResponses.join('\n');
-	} catch (error) {
-	    console.error('Unexpected error analyzing photos:', error);
-	    return 'Error analyzing photos';
-	} finally {
-	    document.body.removeChild(overlay);
-	}
-}
-
-async function analyzeSinglePhotoWithOpenAI(base64Image, expectedComponent, index) {
-    const payload = {
-        prompt: `Analiza la imagen y evalúa el estado del componente: ${expectedComponent}. \n                 Describe sus características visibles, incluyendo estado, desgaste, daños, suciedad o deformaciones. \n                 Si el componente no es claramente identificable, indica que no se puede determinar.`,
-        image: base64Image.split(',')[1],
-    };
-
-    console.log(`Payload enviado al backend para imagen ${index + 1}:`, JSON.stringify(payload, null, 2));
-
-	const response = await fetch('/api/openai', {
-	    method: 'POST',
-	    headers: { 'Content-Type': 'application/json' },
-	    body: JSON.stringify(payload),
-	});
-	
-	console.log(`Response status for image ${index + 1}:`, response.status);
-	
-	if (!response.ok) {
-	    const errorDetails = await response.text();
-	    console.error(`HTTP error for image ${index + 1}:`, response.status, errorDetails);
-	    throw new Error(`HTTP error: ${response.status} - ${errorDetails}`);
-	}
-	
-	const data = await response.json();
-	console.log(`Response data for image ${index + 1}:`, JSON.stringify(data, null, 2));
-	
-	if (!data.result || !data.result.component || !data.result.status) {
-	    console.warn(`Formato incorrecto en la respuesta de OpenAI para la imagen ${index + 1}`);
-	    return `Error: Formato incorrecto en la respuesta de OpenAI para la imagen ${index + 1}`;
-	}
-	
-	const detectedComponent = categorizeVehicleComponent(data.result.description || "");
-	const detectedCondition = evaluateComponentCondition(data.result.description || "");
-	
-	console.log(`Componente detectado: ${detectedComponent}`);
-	console.log(`Estado detectado: ${detectedCondition}`);
-	
-	updateUIWithAnalysis(detectedComponent, detectedCondition);
-	return `Component: ${detectedComponent}\nStatus: ${detectedCondition}`;
-}
-
-function categorizeVehicleComponent(description) {
-    const components = [
-        { name: "Llantas", keywords: ["llanta", "neumático", "rueda", "pinchada", "desinflada"], weight: 3 },
-        { name: "Espejos Retrovisores", keywords: ["espejo", "retrovisor", "cristal"], weight: 2 },
-        { name: "Parabrisas", keywords: ["parabrisas", "vidrio delantero"], weight: 2 },
-        { name: "Faros", keywords: ["faro", "luz frontal"], weight: 2 },
-        { name: "Parachoques", keywords: ["parachoques", "bumper"], weight: 1 },
-        { name: "Carrocería", keywords: ["carrocería", "puerta", "capó", "baúl"], weight: 1 }
-    ];
-
-    let bestMatch = "Desconocido";
-    let highestScore = 0;
-
-    components.forEach(component => {
-        let score = 0;
-        component.keywords.forEach(keyword => {
-            if (description.toLowerCase().includes(keyword)) {
-                score += component.weight;
-            }
-        });
-
-        if (score > highestScore) {
-            highestScore = score;
-            bestMatch = component.name;
-        }
-    });
-
-    return bestMatch;
-}
-
-function evaluateComponentCondition(description) {
-    const conditions = [
-        { status: "Condición óptima", keywords: ["sin daños", "en buen estado", "intacto", "funciona bien"], severity: 0 },
-        { status: "Desgaste leve", keywords: ["ligeras grietas", "poco desgaste", "marcas menores"], severity: 1 },
-        { status: "Desgaste medio", keywords: ["grietas visibles", "pequeños golpes", "rayones"], severity: 2 },
-        { status: "Crítico", keywords: ["desinflado", "pinchada", "roto", "daño severo"], severity: 3 }
-    ];
-
-    let bestCondition = "No determinado";
-    let highestScore = 0;
-
-    conditions.forEach(condition => {
-        let score = 0;
-        condition.keywords.forEach(keyword => {
-            if (description.toLowerCase().includes(keyword)) {
-                score += condition.severity;
-            }
-        });
-
-        if (score > highestScore) {
-            highestScore = score;
-            bestCondition = condition.status;
-        }
-    });
-
-    return bestCondition;
 }*/
-async function analyzePhotoWithOpenAI(imageBase64Array, prompt) {
+
+async function analyzePhotoWithOpenAI(imageFiles, prompt) {
     try {
+        showNotification('Redimensionando imágenes...', 'info');
+
+        // 🔹 Redimensionar todas las imágenes antes de enviarlas a OpenAI
+        const resizedImages = await Promise.all(imageFiles.map(file => resizeImage(file)));
+
+        console.log('Imágenes redimensionadas:', resizedImages);
+
         showNotification('Enviando imágenes a OpenAI...', 'info');
 
         const response = await fetch('/api/openai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt, images: imageBase64Array })
+            body: JSON.stringify({ prompt, images: resizedImages })
         });
 
         if (!response.ok) {
@@ -2291,6 +2195,7 @@ async function analyzePhotoWithOpenAI(imageBase64Array, prompt) {
         return [{ status: 'Error', issues: ['Error en análisis'], details: error.message }];
     }
 }
+
 
 /*async function analyzePhotoWithOpenAI(base64Images) {
     console.log('Starting analyzePhotoWithOpenAI function...');
