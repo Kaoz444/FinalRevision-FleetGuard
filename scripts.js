@@ -952,6 +952,13 @@ async function generateInspectionPDF(inspection) {
         };
 
         const addSectionHeader = (text, yPos) => {
+            // Check if there's enough space for header and at least one line of content
+            const MIN_SPACE_AFTER_HEADER = 100; // Minimum space needed after header
+            if (yPos + MIN_SPACE_AFTER_HEADER > pageHeight - margin) {
+                doc.addPage();
+                addHeader();
+                yPos = 45;
+            }
             // Add background for section header
             doc.setFillColor(240, 240, 240);
             doc.rect(margin - 5, yPos - 5, pageWidth - (2 * margin) + 10, 25, 'F');
@@ -1007,7 +1014,9 @@ async function generateInspectionPDF(inspection) {
                 }
             }
 
-            const containerHeight = Math.max(photoHeight + 10, textHeight + 10);
+            // Add extra padding to ensure text doesn't touch container borders
+            const CONTAINER_PADDING = 20;
+            const containerHeight = Math.max(photoHeight + CONTAINER_PADDING, textHeight + CONTAINER_PADDING);
 
             // Check if we need a new page
             if (yPos + containerHeight > pageHeight - margin) {
