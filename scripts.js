@@ -2454,7 +2454,84 @@ function processAIResponse(aiResponse, item) {
     });
 }
 
+//extraer la informacion de la respuesta de AI
+//extraccion de la informacion para la respuesta
+function extractIssues(text) {
+    // Palabras clave que indican problemas
+    const issueKeywords = {
+        desgaste: [
+            'desgaste', 'gastado', 'deterioro', 'deteriorado',
+            'uso excesivo', 'desgastado'
+        ],
+        daño: [
+            'daño', 'dañado', 'rotura', 'roto', 'grieta',
+            'rajadura', 'abolladura', 'rayón', 'golpe'
+        ],
+        suciedad: [
+            'sucio', 'suciedad', 'manchas', 'residuos',
+            'polvo', 'contaminación'
+        ],
+        presión: [
+            'presión baja', 'desinflado', 'inflación irregular',
+            'ponchado', 'fuga'
+        ],
+        alineación: [
+            'desalineado', 'desbalanceado', 'irregular',
+            'desajustado', 'mal ajuste'
+        ]
+    };
 
+    const issues = [];
+    const textLower = text.toLowerCase();
+
+    // Revisar cada categoría de problemas
+    Object.entries(issueKeywords).forEach(([category, keywords]) => {
+        if (keywords.some(keyword => textLower.includes(keyword))) {
+            switch (category) {
+                case 'desgaste':
+                    if (textLower.includes('excesivo')) {
+                        issues.push('Desgaste excesivo');
+                    } else {
+                        issues.push('Desgaste normal');
+                    }
+                    break;
+                case 'daño':
+                    if (textLower.includes('severo') || textLower.includes('grave')) {
+                        issues.push('Daño estructural');
+                    } else {
+                        issues.push('Daño cosmético menor');
+                    }
+                    break;
+                case 'suciedad':
+                    issues.push('Acumulación de suciedad');
+                    break;
+                case 'presión':
+                    if (textLower.includes('ponchado') || textLower.includes('fuga')) {
+                        issues.push('Pérdida total de presión');
+                    } else {
+                        issues.push('Presión baja visible');
+                    }
+                    break;
+                case 'alineación':
+                    issues.push('Falta de ajuste adecuado');
+                    break;
+            }
+        }
+    });
+
+    // Si no se encontraron problemas, considerar si el texto indica buen estado
+    if (issues.length === 0) {
+        if (textLower.includes('buen estado') || 
+            textLower.includes('óptimo') || 
+            textLower.includes('excelente')) {
+            issues.push('No presenta problemas');
+        } else {
+            issues.push('Condición normal');
+        }
+    }
+
+    return issues;
+}
 /*async function analyzePhotoWithOpenAI(base64Images) {
     console.log('Starting analyzePhotoWithOpenAI function...');
 
