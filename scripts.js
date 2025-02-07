@@ -1826,8 +1826,10 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
             throw new Error(`Error en API: ${response.status}`);
         }
 
-        const data = await response.json();
-        return processAIAnalysis(data.results, item);
+	const data = await response.json();
+	// Ensure we're passing a string as the prompt
+	const itemName = typeof item.name === 'object' ? item.name.es : String(item.name || '');
+	return processAIAnalysis(data.results[0].details || '', itemName);
 
     } catch (error) {
         console.error('Error en análisis:', error);
@@ -1851,7 +1853,6 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
         }
     }
 }
-//para obtener la respuesta de la IA
 // 🔹 Función que analiza la respuesta de OpenAI y la categoriza
 function processAIAnalysis(description, prompt) {
     const conditions = {
@@ -1907,6 +1908,12 @@ function processAIAnalysis(description, prompt) {
 }
 // 🔹 Función para determinar el tipo de componente según el prompt
 function getComponentType(prompt) {
+    // Handle non-string inputs
+    if (!prompt || typeof prompt !== 'string') {
+        console.warn('Invalid prompt type provided to getComponentType:', prompt);
+        return 'general';
+    }
+
     const promptLower = prompt.toLowerCase();
     if (promptLower.includes('llanta')) return 'tires';
     if (promptLower.includes('espejo')) return 'mirrors';
