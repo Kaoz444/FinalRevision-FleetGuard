@@ -1905,6 +1905,18 @@ function processAIAnalysis(description, prompt) {
         issues: detectedIssues.length > 0 ? detectedIssues : ["Sin problemas"]
     };
 }
+// 🔹 Función para determinar el tipo de componente según el prompt
+function getComponentType(prompt) {
+    const promptLower = prompt.toLowerCase();
+    if (promptLower.includes('llanta')) return 'tires';
+    if (promptLower.includes('espejo')) return 'mirrors';
+    if (promptLower.includes('placa')) return 'license_plates';
+    if (promptLower.includes('faro')) return 'headlights';
+    if (promptLower.includes('limpieza')) return 'cleanliness';
+    if (promptLower.includes('rayon')) return 'scratches';
+    return 'general';
+}
+
 // Admin Dashboard Functions
 function showAdminDashboard() {
     try {
