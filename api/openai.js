@@ -34,7 +34,10 @@ export default async function handler(req, res) {
                         messages: [
                             {
                                 role: 'system',
-                                content: `YYou are a professional vehicle inspector. Provide only factual observations about physical condition. Keep responses concise and technical. Focus only on visible conditions. Include any visible issues like damage, dirt, wear, scratches, or defects.`
+                                content: `Eres un inspector técnico de vehículos profesional. 
+                                Proporciona solo observaciones técnicas y factuales sobre el estado físico en español. 
+                                Mantén las respuestas concisas pero detalladas, enfocándote en aspectos técnicos visibles. 
+                                No incluyas recomendaciones ni comentarios adicionales.`
                             },
                             {
                                 role: 'user',
