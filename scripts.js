@@ -1852,7 +1852,35 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
         }
     }
 }
-
+//para obtener la respuesta de la IA
+// 🔹 Función que analiza la respuesta de OpenAI y la categoriza
+function processAIAnalysis(description, prompt) {
+    const conditions = {
+        tires: {
+            statuses: ["Óptimo", "Desgaste normal", "Desgaste avanzado", "Desinflado", "Ponchado", "Crítico"],
+            issues: ["Sin problemas", "Presión baja", "Desgaste irregular", "Desgaste en bordes", "Grietas", "Objeto punzante", "Deformación"]
+        },
+        mirrors: {
+            statuses: ["Óptimo", "Funcional", "Dañado", "Crítico"],
+            issues: ["Sin problemas", "Rayones menores", "Rajadura", "Desajustado", "Visibilidad reducida", "Roto"]
+        },
+        license_plates: {
+            statuses: ["Óptimo", "Legible", "Parcialmente legible", "Ilegible"],
+            issues: ["Sin problemas", "Suciedad", "Decoloración", "Dobladura", "Daño físico", "Baja reflectividad"]
+        },
+        headlights: {
+            statuses: ["Óptimo", "Funcional", "Deteriorado", "No funcional"],
+            issues: ["Sin problemas", "Opacidad", "Humedad", "Grietas", "Bajo brillo", "Daño estructural"]
+        },
+        cleanliness: {
+            statuses: ["Excelente", "Aceptable", "Requiere limpieza", "Inaceptable"],
+            issues: ["Sin problemas", "Polvo", "Manchas", "Suciedad excesiva", "Residuos"]
+        },
+        scratches: {
+            statuses: ["Sin daños", "Daños menores", "Daños moderados", "Daños severos"],
+            issues: ["Sin problemas", "Rayones superficiales", "Rayones profundos", "Abolladuras", "Pintura dañada"]
+        }
+    };
 
 // Admin Dashboard Functions
 function showAdminDashboard() {
