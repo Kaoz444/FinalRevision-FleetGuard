@@ -5,7 +5,7 @@ export default async function handler(req, res) {
 
     const { prompt, images } = req.body;
 
-    // Validación de los datos recibidos
+    // Validate input
     if (!prompt || !images || !Array.isArray(images) || images.length === 0) {
         return res.status(400).json({ error: 'Valid prompt and images are required' });
     }
@@ -15,10 +15,14 @@ export default async function handler(req, res) {
             throw new Error('OpenAI API key not configured');
         }
 
-        // Procesamos cada imagen por separado
+        // Process each image
         const analysisPromises = images.map(async (imageBase64, index) => {
             try {
-                // 🔹 Paso 1: Obtener descripción natural de la imagen
+                // Ensure proper base64 format
+                const base64Image = imageBase64.startsWith('data:image/') 
+                    ? imageBase64 
+                    : `data:image/jpeg;base64,${imageBase64}`;
+
                 const openAIResponse = await fetch('https://api.openai.com/v1/chat/completions', {
                     method: 'POST',
                     headers: {
@@ -26,50 +30,52 @@ export default async function handler(req, res) {
                         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
                     },
                     body: JSON.stringify({
-                        model: 'gpt-4o',
+                        model: 'gpt-4o',  // Updated to correct model name
                         messages: [
                             {
                                 role: 'system',
-                                content: `Eres un inspector experto en vehículos. Analiza la imagen y describe su condición física en lenguaje natural, sin estructurar la información. 
-                                Incluye cualquier problema visible como daños, suciedad, desgaste, rayones o defectos.`
+                                content: `You are an expert vehicle inspector. Analyze the image and describe its physical condition in natural language. Include any visible issues like damage, dirt, wear, scratches, or defects.`
                             },
                             {
                                 role: 'user',
                                 content: [
-                                    { 
-                                        type: 'text', 
-                                        text: `Describe la condición física del siguiente componente del vehículo: ${prompt}` 
+                                    {
+                                        type: 'text',
+                                        text: `Analyze this vehicle component in detail: ${prompt}`
                                     },
-                                    { 
+                                    {
                                         type: 'image_url',
-                                        image_url: { url: `data:image/jpeg;base64,${imageBase64}` }
+                                        image_url: {
+                                            url: base64Image
+                                        }
                                     }
                                 ]
                             }
                         ],
-                        max_tokens: 300
+                        max_tokens: 500
                     })
                 });
 
                 if (!openAIResponse.ok) {
-                    throw new Error(`OpenAI API error: ${openAIResponse.status}`);
+                    const errorData = await openAIResponse.json();
+                    throw new Error(`OpenAI API error: ${errorData.error?.message || openAIResponse.status}`);
                 }
 
                 const data = await openAIResponse.json();
                 const analysisText = data.choices[0].message.content.trim();
 
-                // 🔹 Paso 2: Analizar la respuesta de OpenAI y categorizarla
-                const processedAnalysis = processAIAnalysis(analysisText, prompt);
-
                 return {
+                    imageIndex: index + 1,
                     component: prompt,
-                    ...processedAnalysis,
+                    status: 'undefined', // Will be processed later
+                    issues: [], // Will be processed later
                     details: analysisText
                 };
 
             } catch (error) {
                 console.error(`Error processing image ${index + 1}:`, error);
                 return {
+                    imageIndex: index + 1,
                     component: prompt,
                     status: 'Error',
                     issues: ['Error in analysis'],
@@ -83,7 +89,10 @@ export default async function handler(req, res) {
 
     } catch (error) {
         console.error('General error:', error);
-        return res.status(500).json({ error: 'Error processing request' });
+        return res.status(500).json({ 
+            error: 'Error processing request',
+            details: error.message
+        });
     }
 }
 
