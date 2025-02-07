@@ -14,7 +14,6 @@ export default async function handler(req, res) {
         if (!process.env.OPENAI_API_KEY) {
             throw new Error('OpenAI API key not configured');
         }
-
         // Process each image
         const analysisPromises = images.map(async (imageBase64, index) => {
             try {
