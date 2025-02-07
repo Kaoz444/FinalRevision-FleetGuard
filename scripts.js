@@ -899,7 +899,6 @@ function previousItem() {
         showNotification('This is the first item', 'warning');
     }
 }
-//funcion para generar el PDF
 async function generateInspectionPDF(inspection) {
     const { jsPDF } = window.jspdf;
     if (!jsPDF) {
@@ -909,32 +908,59 @@ async function generateInspectionPDF(inspection) {
 
     try {
         const doc = new jsPDF();
-        let y = 40;
+        let y = 20;
 
-        // Header with company logo and title
-        doc.setFillColor(59, 130, 246);
-        doc.rect(0, 0, doc.internal.pageSize.getWidth(), 30, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(20);
-        doc.text('FleetGuard Inspection Report', 20, 20);
+        // Custom styling functions
+        const addHeader = () => {
+            doc.setFillColor(59, 130, 246);
+            doc.rect(0, 0, doc.internal.pageSize.getWidth(), 35, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(24);
+            doc.setFont('helvetica', 'bold');
+            doc.text('FleetGuard Inspection Report', 20, 25);
+        };
 
-        // Basic inspection information
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(12);
-        const basicInfo = [
-            `Inspector: ${inspection.worker}`,
-            `Vehicle ID: ${inspection.truckId}`,
-            `Date: ${new Date(inspection.start_time).toLocaleString()}`,
-            `Duration: ${Math.round(inspection.duration / 60)} minutes`,
-            `Overall Condition: ${inspection.overall_condition}%`,
-            `Critical Issues: ${inspection.critical_count}`,
-            `Warnings: ${inspection.warning_count}`
-        ];
+        const addSectionHeader = (text, yPos) => {
+            doc.setFillColor(240, 240, 240);
+            doc.rect(15, yPos - 6, doc.internal.pageSize.getWidth() - 30, 10, 'F');
+            doc.setTextColor(0, 0, 0);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text(text, 20, yPos);
+            return yPos + 15;
+        };
 
-        basicInfo.forEach(info => {
-            doc.text(info, 20, y);
-            y += 10;
-        });
+        const addMetadataBox = () => {
+            const boxY = 45;
+            doc.setDrawColor(200, 200, 200);
+            doc.setFillColor(250, 250, 250);
+            doc.roundedRect(15, boxY, doc.internal.pageSize.getWidth() - 30, 50, 3, 3, 'FD');
+            
+            doc.setFontSize(11);
+            doc.setTextColor(0, 0, 0);
+            doc.setFont('helvetica', 'bold');
+
+            const metadata = [
+                [`Inspector: ${inspection.worker}`, `Vehicle ID: ${inspection.truckId}`],
+                [`Date: ${new Date(inspection.start_time).toLocaleString()}`, `Duration: ${Math.round(inspection.duration / 60)} minutes`],
+                [`Overall Condition: ${inspection.overall_condition}%`, `Critical Issues: ${inspection.critical_count} | Warnings: ${inspection.warning_count}`]
+            ];
+
+            let metadataY = boxY + 15;
+            metadata.forEach(row => {
+                doc.text(row[0], 25, metadataY);
+                doc.text(row[1], doc.internal.pageSize.getWidth() / 2 + 10, metadataY);
+                metadataY += 15;
+            });
+
+            return boxY + 60;
+        };
+
+        // Add main header
+        addHeader();
+        
+        // Add metadata section
+        y = addMetadataBox();
 
         // Inspection Items
         Object.entries(inspection.data).forEach(([itemId, itemData]) => {
@@ -944,106 +970,124 @@ async function generateInspectionPDF(inspection) {
             // Check if we need a new page
             if (y > doc.internal.pageSize.getHeight() - 60) {
                 doc.addPage();
-                y = 20;
+                addHeader();
+                y = 45;
             }
 
-            y += 15;
-            
-            // Item header
-            doc.setFontSize(16);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`${item.name[currentLanguage]}`, 20, y);
-            y += 10;
-
-            // Status and condition
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(0, 0, 0);
-            y += 10;
+            // Add section header for each item
+            y = addSectionHeader(item.name[currentLanguage], y);
 
             // Inspector Comments
             if (itemData.comment) {
                 doc.setFont('helvetica', 'bold');
+                doc.setFontSize(11);
                 doc.text('Inspector Comments:', 20, y);
-                y += 7;
                 doc.setFont('helvetica', 'normal');
-                const commentLines = doc.splitTextToSize(itemData.comment, 165);
-                doc.text(commentLines, 25, y);
-                y += commentLines.length * 7;
+                const commentLines = doc.splitTextToSize(itemData.comment, 170);
+                doc.text(commentLines, 25, y + 7);
+                y += commentLines.length * 7 + 15;
             }
 
             // Handle multiple photos and their analyses
             if (itemData.photos && itemData.photos.length > 0) {
-                y += 10;
-                const photoWidth = 80;  // Increased size for better visibility
+                const photoWidth = 80;
                 const photoHeight = 60;
-                
+
                 itemData.photos.forEach((photo, photoIndex) => {
                     // New page if needed
-                    if (y + photoHeight + 40 > doc.internal.pageSize.getHeight()) {
+                    if (y + photoHeight + 60 > doc.internal.pageSize.getHeight()) {
                         doc.addPage();
-                        y = 20;
+                        addHeader();
+                        y = 45;
                     }
+
+                    // Photo container with border
+                    doc.setDrawColor(200, 200, 200);
+                    doc.setFillColor(250, 250, 250);
+                    doc.roundedRect(15, y, doc.internal.pageSize.getWidth() - 30, photoHeight + 10, 2, 2, 'FD');
 
                     // Add photo
                     try {
-                        doc.addImage(photo, 'JPEG', 20, y, photoWidth, photoHeight);
+                        doc.addImage(photo, 'JPEG', 20, y + 5, photoWidth, photoHeight);
                         
-                        // Add photo number
-                        doc.setFontSize(10);
-                        doc.text(`Photo ${photoIndex + 1}`, 20, y + photoHeight + 5);
-
-                        // Add AI analysis for this photo
+                        // Add analysis next to the photo
                         if (itemData.photoAnalyses && itemData.photoAnalyses[photoIndex]) {
                             const analysis = itemData.photoAnalyses[photoIndex];
-                            
+                            const textX = photoWidth + 30;
+                            let textY = y + 15;
+
+                            // Analysis header
                             doc.setFont('helvetica', 'bold');
-                            doc.text(`Analysis for Photo ${photoIndex + 1}:`, 20, y + photoHeight + 15);
-                            y += 5;
-                            
-                            doc.setFont('helvetica', 'normal');
-                            doc.text(`Status: ${analysis.status}`, 25, y + photoHeight + 15);
-                            
+                            doc.setFontSize(12);
+                            doc.text(`Analysis for Photo ${photoIndex + 1}`, textX, textY);
+                            textY += 10;
+
+                            // Status with color coding
+                            doc.setFontSize(11);
+                            const statusColor = analysis.status.toLowerCase().includes('crítico') ? '#ef4444' : 
+                                              analysis.status.toLowerCase().includes('avanzado') ? '#f59e0b' : '#10b981';
+                            doc.setTextColor(...hexToRGB(statusColor));
+                            doc.text(`Status: ${analysis.status}`, textX, textY);
+                            doc.setTextColor(0, 0, 0);
+                            textY += 10;
+
+                            // Issues
                             if (analysis.issues && analysis.issues.length > 0) {
-                                y += 7;
-                                doc.text('Issues detected:', 25, y + photoHeight + 15);
-                                analysis.issues.forEach((issue, i) => {
-                                    y += 7;
-                                    doc.text(`• ${issue}`, 30, y + photoHeight + 15);
+                                doc.setFont('helvetica', 'bold');
+                                doc.text('Issues detected:', textX, textY);
+                                textY += 7;
+                                doc.setFont('helvetica', 'normal');
+                                analysis.issues.forEach(issue => {
+                                    doc.text(`• ${issue}`, textX + 5, textY);
+                                    textY += 7;
                                 });
                             }
 
+                            // Technical details
                             if (analysis.details) {
-                                y += 12;
+                                textY += 3;
                                 doc.setFont('helvetica', 'italic');
-                                const detailLines = doc.splitTextToSize(analysis.details, 165);
-                                doc.text(detailLines, 25, y + photoHeight + 15);
-                                y += detailLines.length * 7;
+                                const detailLines = doc.splitTextToSize(analysis.details, 90);
+                                doc.text(detailLines, textX, textY);
+                                textY += detailLines.length * 7;
                             }
                         }
 
-                        y += photoHeight + 40; // Increased spacing between photos
                     } catch (error) {
                         console.error(`Error adding photo ${photoIndex + 1}:`, error);
+                        doc.text(`Error loading photo ${photoIndex + 1}`, 20, y + 30);
                     }
+
+                    y += photoHeight + 25;
                 });
             }
 
-            y += 20; // Space between items
+            y += 15; // Space between items
         });
 
         // Footer
-        doc.setFontSize(10);
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 20, doc.internal.pageSize.getHeight() - 10);
+        const addFooter = () => {
+            const pages = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pages; i++) {
+                doc.setPage(i);
+                doc.setFontSize(9);
+                doc.setTextColor(150, 150, 150);
+                doc.text(
+                    `Generated: ${new Date().toLocaleString()} - Page ${i} of ${pages}`,
+                    doc.internal.pageSize.getWidth() / 2,
+                    doc.internal.pageSize.getHeight() - 10,
+                    { align: 'center' }
+                );
+            }
+        };
+        addFooter();
 
-        // Generate filename
+        // Generate filename and save
         const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
         const filename = `FleetGuard_${inspection.truckId}_${timestamp}.pdf`;
-
-        // Save PDF
         doc.save(filename);
 
-        // Upload to backend if not in demo mode
+        // Handle upload to backend if not in demo mode
         if (currentWorker.id !== '000') {
             const pdfBase64 = doc.output('datauristring');
             try {
@@ -1057,10 +1101,7 @@ async function generateInspectionPDF(inspection) {
                     })
                 });
 
-                if (!response.ok) {
-                    throw new Error('Failed to upload PDF');
-                }
-
+                if (!response.ok) throw new Error('Failed to upload PDF');
                 const { url } = await response.json();
                 return url;
             } catch (error) {
@@ -1077,183 +1118,13 @@ async function generateInspectionPDF(inspection) {
         return null;
     }
 }
-//Funcion para generar el pdf
-async function generateInspectionPDF(inspection) {
-    const { jsPDF } = window.jspdf;
-    if (!jsPDF) {
-        console.error('PDF generation library not loaded');
-        return null;
-    }
 
-    try {
-        const doc = new jsPDF();
-        let y = 40;
-
-        // Header with company logo and title
-        doc.setFillColor(59, 130, 246);
-        doc.rect(0, 0, doc.internal.pageSize.getWidth(), 30, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(20);
-        doc.text('FleetGuard Inspection Report', 20, 20);
-
-        // Basic inspection information
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(12);
-        const basicInfo = [
-            `Inspector: ${inspection.worker}`,
-            `Vehicle ID: ${inspection.truckId}`,
-            `Date: ${new Date(inspection.start_time).toLocaleString()}`,
-            `Duration: ${Math.round(inspection.duration / 60)} minutes`,
-            `Overall Condition: ${inspection.overall_condition}%`,
-            `Critical Issues: ${inspection.critical_count}`,
-            `Warnings: ${inspection.warning_count}`
-        ];
-
-        basicInfo.forEach(info => {
-            doc.text(info, 20, y);
-            y += 10;
-        });
-
-        // Inspection Items
-        Object.entries(inspection.data).forEach(([itemId, itemData]) => {
-            const item = inspectionItems.find(i => i.id === itemId);
-            if (!item) return;
-
-            // Check if we need a new page
-            if (y > doc.internal.pageSize.getHeight() - 60) {
-                doc.addPage();
-                y = 20;
-            }
-
-            y += 15;
-            
-            // Item header
-            doc.setFontSize(16);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`${item.name[currentLanguage]}`, 20, y);
-            y += 10;
-
-            // Status and condition
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(0, 0, 0);
-            y += 10;
-
-            // Inspector Comments
-            if (itemData.comment) {
-                doc.setFont('helvetica', 'bold');
-                doc.text('Inspector Comments:', 20, y);
-                y += 7;
-                doc.setFont('helvetica', 'normal');
-                const commentLines = doc.splitTextToSize(itemData.comment, 165);
-                doc.text(commentLines, 25, y);
-                y += commentLines.length * 7;
-            }
-
-            // Handle multiple photos and their analyses
-            if (itemData.photos && itemData.photos.length > 0) {
-                y += 10;
-                const photoWidth = 80;  // Increased size for better visibility
-                const photoHeight = 60;
-                
-                itemData.photos.forEach((photo, photoIndex) => {
-                    // New page if needed
-                    if (y + photoHeight + 40 > doc.internal.pageSize.getHeight()) {
-                        doc.addPage();
-                        y = 20;
-                    }
-
-                    // Add photo
-                    try {
-                        doc.addImage(photo, 'JPEG', 20, y, photoWidth, photoHeight);
-                        
-                        // Add photo number
-                        doc.setFontSize(10);
-                        doc.text(`Photo ${photoIndex + 1}`, 20, y + photoHeight + 5);
-
-                        // Add AI analysis for this photo
-                        if (itemData.photoAnalyses && itemData.photoAnalyses[photoIndex]) {
-                            const analysis = itemData.photoAnalyses[photoIndex];
-                            
-                            doc.setFont('helvetica', 'bold');
-                            doc.text(`Analysis for Photo ${photoIndex + 1}:`, 20, y + photoHeight + 15);
-                            y += 5;
-                            
-                            doc.setFont('helvetica', 'normal');
-                            doc.text(`Status: ${analysis.status}`, 25, y + photoHeight + 15);
-                            
-                            if (analysis.issues && analysis.issues.length > 0) {
-                                y += 7;
-                                doc.text('Issues detected:', 25, y + photoHeight + 15);
-                                analysis.issues.forEach((issue, i) => {
-                                    y += 7;
-                                    doc.text(`• ${issue}`, 30, y + photoHeight + 15);
-                                });
-                            }
-
-                            if (analysis.details) {
-                                y += 12;
-                                doc.setFont('helvetica', 'italic');
-                                const detailLines = doc.splitTextToSize(analysis.details, 165);
-                                doc.text(detailLines, 25, y + photoHeight + 15);
-                                y += detailLines.length * 7;
-                            }
-                        }
-
-                        y += photoHeight + 40; // Increased spacing between photos
-                    } catch (error) {
-                        console.error(`Error adding photo ${photoIndex + 1}:`, error);
-                    }
-                });
-            }
-
-            y += 20; // Space between items
-        });
-
-        // Footer
-        doc.setFontSize(10);
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 20, doc.internal.pageSize.getHeight() - 10);
-
-        // Generate filename
-        const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
-        const filename = `FleetGuard_${inspection.truckId}_${timestamp}.pdf`;
-
-        // Save PDF
-        doc.save(filename);
-
-        // Upload to backend if not in demo mode
-        if (currentWorker.id !== '000') {
-            const pdfBase64 = doc.output('datauristring');
-            try {
-                const response = await fetch('/api/uploadPDF', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ 
-                        pdfData: pdfBase64, 
-                        filename,
-                        inspectionId: inspection.id
-                    })
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to upload PDF');
-                }
-
-                const { url } = await response.json();
-                return url;
-            } catch (error) {
-                console.error('Error uploading PDF:', error);
-                showNotification('PDF generated but upload failed', 'warning');
-                return null;
-            }
-        }
-
-        return true;
-    } catch (error) {
-        console.error('Error generating PDF:', error);
-        showNotification('Error generating PDF', 'error');
-        return null;
-    }
+// Helper function to convert hex color to RGB
+function hexToRGB(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return [r, g, b];
 }
 /*async function generateInspectionPDF(inspection) {
     const { jsPDF } = window.jspdf;
