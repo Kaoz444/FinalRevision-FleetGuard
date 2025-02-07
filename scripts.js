@@ -835,19 +835,18 @@ async function nextItem() {
 
         console.log(`Resultados de IA para ${item.name[currentLanguage]}:`, aiResults);
 
-        // Create a combined analysis from all results
-        const combinedAnalysis = {
-            status: getMostSevereStatus(aiResults.map(r => r.status)),
-            issues: [...new Set(aiResults.flatMap(r => r.issues))], // Remove duplicates
-            details: aiResults.map((r, idx) => `Foto ${idx + 1}: ${r.details}`).join('\n\n')
-        };
+        // Store each photo's analysis separately
+        const photoAnalyses = aiResults.map((result, idx) => ({
+            photoIndex: idx + 1,
+            status: result.status,
+            issues: result.issues,
+            details: result.details
+        }));
 
         currentInspectionData[item.id] = {
             ...currentInspectionData[item.id],
             comment: comment,
-            status: combinedAnalysis.status,
-            issues: combinedAnalysis.issues,
-            aiComment: combinedAnalysis.details,
+            photoAnalyses: photoAnalyses,
             timestamp: new Date().toISOString()
         };
 
@@ -859,22 +858,6 @@ async function nextItem() {
     }
 
     advanceToNextItem();
-}
-
-// Add this helper function to determine the most severe status
-function getMostSevereStatus(statuses) {
-    const severityOrder = {
-        'Óptimo': 0,
-        'Desgaste normal': 1,
-        'Desgaste avanzado': 2,
-        'Desinflado': 3,
-        'Ponchado': 4,
-        'Crítico': 5
-    };
-
-    return statuses.reduce((mostSevere, current) => {
-        return (severityOrder[current] || 0) > (severityOrder[mostSevere] || 0) ? current : mostSevere;
-    }, statuses[0] || 'No determinado');
 }
 /*async function nextItem() {
     console.log('nextItem fue llamado');
@@ -1042,12 +1025,38 @@ async function generateInspectionPDF(inspection) {
             y += 10;
 
             // AI Analysis
-		if (itemData.aiComment) {
-		    doc.setFont('helvetica', 'italic');
-		    const aiLines = doc.splitTextToSize(itemData.aiComment, 170);
-		    doc.text(aiLines, 20, y);
-		    y += aiLines.length * 6;
-		}
+		 if (itemData.photoAnalyses && itemData.photoAnalyses.length > 0) {
+                itemData.photoAnalyses.forEach((analysis, index) => {
+                    y += 10;
+                    doc.setFont('helvetica', 'bold');
+                    doc.text(`Análisis de Foto ${analysis.photoIndex}:`, 20, y);
+                    y += 7;
+                    
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(`Estado: ${analysis.status}`, 25, y);
+                    y += 7;
+
+                    if (analysis.issues && analysis.issues.length > 0) {
+                        doc.text('Problemas detectados:', 25, y);
+                        y += 7;
+                        analysis.issues.forEach(issue => {
+                            doc.text(`• ${issue}`, 30, y);
+                            y += 7;
+                        });
+                    }
+
+                    doc.setFont('helvetica', 'italic');
+                    const detailLines = doc.splitTextToSize(analysis.details, 165);
+                    doc.text(detailLines, 25, y);
+                    y += detailLines.length * 7 + 5;
+                });
+            } else if (itemData.aiComment) {
+                // Fallback for old format
+                doc.setFont('helvetica', 'italic');
+                const aiLines = doc.splitTextToSize(itemData.aiComment, 170);
+                doc.text(aiLines, 20, y);
+                y += aiLines.length * 6;
+            }
 
             // Issues
             if (itemData.issues && itemData.issues.length > 0) {
