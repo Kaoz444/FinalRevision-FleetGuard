@@ -1794,6 +1794,87 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
     let overlay = null;
 
     try {
+        // Create and show overlay
+        overlay = document.createElement('div');
+        overlay.className = 'processing-overlay';
+        overlay.innerHTML = `
+            <div class="processing-message">
+                <div class="loading-spinner"></div>
+                <p>Analizando imagen con IA...</p>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+        document.body.style.overflow = 'hidden';
+
+        showNotification('Analizando imágenes...', 'info');
+
+        console.log('Sending analysis request:', {
+            prompt,
+            photosCount: photos.length,
+            itemType: item.id
+        });
+
+        const response = await fetch('/api/openai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                prompt,
+                images: photos,
+                itemType: item.id
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error en API: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log('API Response:', data);
+
+        if (!data.results || !Array.isArray(data.results) || !data.results[0]) {
+            throw new Error('Respuesta de IA incompleta o inválida');
+        }
+
+        const result = data.results[0];
+        
+        // Validate required fields
+        if (!result.status || !Array.isArray(result.issues)) {
+            throw new Error('Formato de respuesta inválido');
+        }
+
+        // Process and format the result
+        const analysis = {
+            status: result.status,
+            issues: result.issues.filter(issue => issue && typeof issue === 'string'),
+            details: result.details || 'No se proporcionaron detalles adicionales'
+        };
+
+        console.log('Processed analysis:', analysis);
+        return [analysis];
+
+    } catch (error) {
+        console.error('Error en análisis:', error);
+        showNotification('Error en análisis de imágenes', 'error');
+        return [{
+            status: 'Error',
+            issues: ['Error en análisis'],
+            details: error.message || 'Error procesando la imagen'
+        }];
+    } finally {
+        if (overlay && overlay.parentNode) {
+            overlay.parentNode.removeChild(overlay);
+        }
+        if (document.body) {
+            document.body.style.overflow = '';
+        }
+    }
+}
+/*async function analyzePhotoWithOpenAI(photos, itemName) {
+    const item = inspectionItems[currentIndex];
+    const prompt = generateAIPrompt(item);
+    let overlay = null;
+
+    try {
         // Create overlay
         overlay = document.createElement('div');
         overlay.className = 'processing-overlay';
@@ -1874,7 +1955,7 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
             console.error('Error cleaning up overlay:', cleanupError);
         }
     }
-}
+}*/
 // 🔹 Función que analiza la respuesta de OpenAI y la categoriza
 function processAIAnalysis(description, prompt) {
     const conditions = {
