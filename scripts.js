@@ -1827,7 +1827,7 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
         }
 
         const data = await response.json();
-        return processAIResponse(data.results, item);
+        return processAIAnalysis(data.results, item);
 
     } catch (error) {
         console.error('Error en análisis:', error);
