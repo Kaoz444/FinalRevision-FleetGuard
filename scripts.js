@@ -1006,16 +1006,67 @@ async function generateInspectionPDF(inspection) {
                     doc.setFillColor(250, 250, 250);
                     doc.roundedRect(15, y, doc.internal.pageSize.getWidth() - 30, photoHeight + 10, 2, 2, 'FD');
 
-                    // Add photo
-                    try {
-                        doc.addImage(photo, 'JPEG', 20, y + 5, photoWidth, photoHeight);
-                        
-                        // Add analysis next to the photo
-				if (itemData.photoAnalyses && itemData.photoAnalyses[photoIndex]) {
-				    const analysis = itemData.photoAnalyses[photoIndex];
-				    const textX = photoWidth + 30;
-				    let textY = y + 15;
-				    const maxWidth = doc.internal.pageSize.getWidth() - textX - 20; // Leave 20pt margin
+				// Add photo
+				try {
+				    // Calculate text height first to determine container size
+				    const analysis = itemData.photoAnalyses && itemData.photoAnalyses[photoIndex];
+				    let requiredHeight = photoHeight;
+				    
+				    if (analysis) {
+				        const textX = photoWidth + 30;
+				        const maxWidth = doc.internal.pageSize.getWidth() - textX - 20;
+				        
+				        // Calculate space needed for text
+				        doc.setFontSize(12);
+				        const titleHeight = 10;
+				        
+				        doc.setFontSize(11);
+				        const statusHeight = 10;
+				        
+				        let issuesHeight = 0;
+				        if (analysis.issues && analysis.issues.length > 0) {
+				            doc.setFont('helvetica', 'bold');
+				            issuesHeight += 7; // "Issues detected:" header
+				            doc.setFont('helvetica', 'normal');
+				            analysis.issues.forEach(issue => {
+				                const lines = doc.splitTextToSize(`• ${issue}`, maxWidth);
+				                issuesHeight += lines.length * 7;
+				            });
+				            issuesHeight += 3; // Extra spacing
+				        }
+				        
+				        let detailsHeight = 0;
+				        if (analysis.details) {
+				            doc.setFont('helvetica', 'italic');
+				            const detailLines = doc.splitTextToSize(analysis.details, maxWidth);
+				            detailsHeight = detailLines.length * 7;
+				        }
+				        
+				        // Total height needed for text
+				        const totalTextHeight = titleHeight + statusHeight + issuesHeight + detailsHeight + 20; // Added padding
+				        requiredHeight = Math.max(photoHeight, totalTextHeight);
+				    }
+				    
+				    // Check if we need a new page for the entire container
+				    if (y + requiredHeight + 20 > doc.internal.pageSize.getHeight()) {
+				        doc.addPage();
+				        addHeader();
+				        y = 45;
+				    }
+				    
+				    // Draw container with calculated height
+				    doc.setDrawColor(200, 200, 200);
+				    doc.setFillColor(250, 250, 250);
+				    doc.roundedRect(15, y, doc.internal.pageSize.getWidth() - 30, requiredHeight + 10, 2, 2, 'FD');
+				    
+				    // Add photo
+				    doc.addImage(photo, 'JPEG', 20, y + 5, photoWidth, photoHeight);
+				    
+				    // Add analysis next to the photo
+				    if (analysis) {
+				        const textX = photoWidth + 30;
+				        let textY = y + 15;
+				        const maxWidth = doc.internal.pageSize.getWidth() - textX - 20;
 				
 				    // Analysis header
 				    doc.setFont('helvetica', 'bold');
@@ -1069,7 +1120,7 @@ async function generateInspectionPDF(inspection) {
                         doc.text(`Error loading photo ${photoIndex + 1}`, 20, y + 30);
                     }
 
-                    y += photoHeight + 25;
+                    y += requiredHeight + 15;
                 });
             }
 
