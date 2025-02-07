@@ -98,20 +98,6 @@ export default async function handler(req, res) {
         });
     }
 }
-
-
-// 🔹 Función para determinar el tipo de componente según el prompt
-function getComponentType(prompt) {
-    const promptLower = prompt.toLowerCase();
-    if (promptLower.includes('llanta')) return 'tires';
-    if (promptLower.includes('espejo')) return 'mirrors';
-    if (promptLower.includes('placa')) return 'license_plates';
-    if (promptLower.includes('faro')) return 'headlights';
-    if (promptLower.includes('limpieza')) return 'cleanliness';
-    if (promptLower.includes('rayon')) return 'scratches';
-    return 'general';
-}
-
 /*export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Método no permitido' });
