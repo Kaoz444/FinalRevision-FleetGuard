@@ -34,7 +34,7 @@ export default async function handler(req, res) {
                         messages: [
                             {
                                 role: 'system',
-                                content: `You are an expert vehicle inspector. Analyze the image and describe its physical condition in natural language. Include any visible issues like damage, dirt, wear, scratches, or defects.`
+                                content: `YYou are a professional vehicle inspector. Provide only factual observations about physical condition. Keep responses concise and technical. Focus only on visible conditions. Include any visible issues like damage, dirt, wear, scratches, or defects.`
                             },
                             {
                                 role: 'user',
@@ -52,7 +52,7 @@ export default async function handler(req, res) {
                                 ]
                             }
                         ],
-                        max_tokens: 500
+                        max_tokens: 250
                     })
                 });
 
