@@ -1812,6 +1812,13 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
 
         showNotification('Analizando imágenes...', 'info');
 
+        // Log the request data
+        console.log('Sending analysis request:', {
+            prompt,
+            photosCount: photos.length,
+            itemType: item.id
+        });
+
         const response = await fetch('/api/openai', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1826,10 +1833,25 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
             throw new Error(`Error en API: ${response.status}`);
         }
 
-	const data = await response.json();
-	// Ensure we're passing a string as the prompt
-	const itemName = typeof item.name === 'object' ? item.name.es : String(item.name || '');
-	return processAIAnalysis(data.results[0].details || '', itemName);
+        const data = await response.json();
+        console.log('API Response:', data);
+
+        if (!data.results || !data.results[0]) {
+            throw new Error('Respuesta de IA incompleta');
+        }
+
+        const result = data.results[0];
+        console.log('Processing result:', result);
+
+        // Process the AI response
+        const analysis = {
+            status: result.status || 'undefined',
+            issues: Array.isArray(result.issues) ? result.issues : [],
+            details: result.details || 'No se proporcionaron detalles'
+        };
+
+        console.log('Final analysis:', analysis);
+        return [analysis];
 
     } catch (error) {
         console.error('Error en análisis:', error);
@@ -1837,7 +1859,7 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
         return [{
             status: 'error',
             issues: ['Error en análisis'],
-            details: error.message
+            details: error.message || 'No se pudo obtener información de IA'
         }];
     } finally {
         // Cleanup: remove overlay and restore scrolling
