@@ -27,7 +27,7 @@ export default async function handler(req, res) {
                         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
                     },
                     body: JSON.stringify({
-                        model: 'gpt-4-vision-preview',
+                        model: 'gpt-4o',  // Updated model name
                         messages: [
                             {
                                 role: 'system',
@@ -70,7 +70,8 @@ export default async function handler(req, res) {
                 });
 
                 if (!openAIResponse.ok) {
-                    throw new Error(`OpenAI API error: ${openAIResponse.status}`);
+                    const errorData = await openAIResponse.json();
+                    throw new Error(`OpenAI API error: ${errorData.error?.message || openAIResponse.status}`);
                 }
 
                 const data = await openAIResponse.json();
