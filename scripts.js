@@ -1881,7 +1881,31 @@ function processAIAnalysis(description, prompt) {
             issues: ["Sin problemas", "Rayones superficiales", "Rayones profundos", "Abolladuras", "Pintura dañada"]
         }
     };
+    // Determinar el tipo de componente
+    const componentType = getComponentType(prompt);
+    const validConditions = conditions[componentType] || conditions.general;
 
+    let status = "Óptimo";
+    let detectedIssues = [];
+
+    // Analizar el texto y categorizar la información
+    validConditions.statuses.forEach(s => {
+        if (description.toLowerCase().includes(s.toLowerCase())) {
+            status = s;
+        }
+    });
+
+    validConditions.issues.forEach(issue => {
+        if (description.toLowerCase().includes(issue.toLowerCase())) {
+            detectedIssues.push(issue);
+        }
+    });
+
+    return {
+        status,
+        issues: detectedIssues.length > 0 ? detectedIssues : ["Sin problemas"]
+    };
+}
 // Admin Dashboard Functions
 function showAdminDashboard() {
     try {
