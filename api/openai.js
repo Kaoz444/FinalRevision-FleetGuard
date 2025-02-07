@@ -5,7 +5,6 @@ export default async function handler(req, res) {
 
     const { prompt, images } = req.body;
 
-    // Validate input
     if (!prompt || !images || !Array.isArray(images) || images.length === 0) {
         return res.status(400).json({ error: 'Valid prompt and images are required' });
     }
@@ -14,10 +13,9 @@ export default async function handler(req, res) {
         if (!process.env.OPENAI_API_KEY) {
             throw new Error('OpenAI API key not configured');
         }
-        // Process each image
+
         const analysisPromises = images.map(async (imageBase64, index) => {
             try {
-                // Ensure proper base64 format
                 const base64Image = imageBase64.startsWith('data:image/') 
                     ? imageBase64 
                     : `data:image/jpeg;base64,${imageBase64}`;
@@ -29,7 +27,7 @@ export default async function handler(req, res) {
                         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
                     },
                     body: JSON.stringify({
-                        model: 'gpt-4o',
+                        model: 'gpt-4-vision-preview',
                         messages: [
                             {
                                 role: 'system',
@@ -72,25 +70,31 @@ export default async function handler(req, res) {
                 });
 
                 if (!openAIResponse.ok) {
-                    const errorData = await openAIResponse.json();
-                    throw new Error(`OpenAI API error: ${errorData.error?.message || openAIResponse.status}`);
+                    throw new Error(`OpenAI API error: ${openAIResponse.status}`);
                 }
 
                 const data = await openAIResponse.json();
-                const content = data.choices[0].message.content.trim();
-                
-                // Parse JSON response from the content
+                let content = data.choices[0].message.content.trim();
+
+                // Remove markdown code block indicators if present
+                content = content.replace(/```json\s*|\s*```/g, '');
+
+                // Parse the JSON content
                 let parsedResponse;
                 try {
                     parsedResponse = JSON.parse(content);
                 } catch (parseError) {
                     console.error('Error parsing OpenAI response:', content);
-                    throw new Error('Invalid JSON response from OpenAI');
+                    throw new Error('Error parsing JSON response');
+                }
+
+                // Validate the response structure
+                if (!parsedResponse.status || !Array.isArray(parsedResponse.issues) || !parsedResponse.details) {
+                    throw new Error('Invalid response structure from OpenAI');
                 }
 
                 return {
                     imageIndex: index + 1,
-                    component: prompt,
                     status: parsedResponse.status,
                     issues: parsedResponse.issues,
                     details: parsedResponse.details
@@ -100,9 +104,8 @@ export default async function handler(req, res) {
                 console.error(`Error processing image ${index + 1}:`, error);
                 return {
                     imageIndex: index + 1,
-                    component: prompt,
                     status: 'Error',
-                    issues: ['Error in analysis'],
+                    issues: ['Error en análisis'],
                     details: error.message
                 };
             }
