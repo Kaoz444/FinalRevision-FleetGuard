@@ -30,21 +30,33 @@ export default async function handler(req, res) {
                         'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
                     },
                     body: JSON.stringify({
-                        model: 'gpt-4o',  // Updated to correct model name
+                        model: 'gpt-4o',
                         messages: [
                             {
                                 role: 'system',
-                                content: `Eres un inspector técnico de vehículos profesional. 
-                                Proporciona solo observaciones técnicas y factuales sobre el estado físico en español. 
-                                Mantén las respuestas concisas pero detalladas, enfocándote en aspectos técnicos visibles. 
-                                No incluyas recomendaciones ni comentarios adicionales.`
+                                content: `Eres un inspector técnico de vehículos profesional.
+                                SIEMPRE proporciona tus análisis en este formato JSON específico:
+                                {
+                                    "status": "Uno de: Óptimo, Desgaste normal, Desgaste avanzado, Desinflado, Ponchado, Crítico",
+                                    "issues": ["Lista específica de problemas detectados"],
+                                    "details": "Descripción técnica detallada del estado"
+                                }
+                                
+                                Reglas críticas:
+                                - NO incluyas el campo "component"
+                                - Si ves cualquier desgaste, NUNCA uses "Óptimo"
+                                - Si hay deformaciones, usa "Crítico"
+                                - Si hay duda entre dos estados, elige el más severo
+                                - Los "issues" deben ser específicos y concretos
+                                - El campo "details" debe ser una descripción técnica detallada
+                                NO incluyas recomendaciones ni comentarios adicionales.`
                             },
                             {
                                 role: 'user',
                                 content: [
                                     {
                                         type: 'text',
-                                        text: `Analyze this vehicle component in detail: ${prompt}`
+                                        text: `Analiza este componente: ${prompt}`
                                     },
                                     {
                                         type: 'image_url',
@@ -55,7 +67,8 @@ export default async function handler(req, res) {
                                 ]
                             }
                         ],
-                        max_tokens: 250
+                        max_tokens: 500,
+                        temperature: 0.7
                     })
                 });
 
@@ -65,14 +78,23 @@ export default async function handler(req, res) {
                 }
 
                 const data = await openAIResponse.json();
-                const analysisText = data.choices[0].message.content.trim();
+                const content = data.choices[0].message.content.trim();
+                
+                // Parse JSON response from the content
+                let parsedResponse;
+                try {
+                    parsedResponse = JSON.parse(content);
+                } catch (parseError) {
+                    console.error('Error parsing OpenAI response:', content);
+                    throw new Error('Invalid JSON response from OpenAI');
+                }
 
                 return {
                     imageIndex: index + 1,
                     component: prompt,
-                    status: 'undefined', // Will be processed later
-                    issues: [], // Will be processed later
-                    details: analysisText
+                    status: parsedResponse.status,
+                    issues: parsedResponse.issues,
+                    details: parsedResponse.details
                 };
 
             } catch (error) {
