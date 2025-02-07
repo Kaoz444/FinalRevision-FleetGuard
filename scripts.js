@@ -829,6 +829,84 @@ async function nextItem() {
         return;
     }
 
+    try {
+        showNotification('Analizando imágenes con OpenAI...', 'info');
+        const aiResults = await analyzePhotoWithOpenAI(currentPhotos, item.name.es);
+
+        console.log(`Resultados de IA para ${item.name[currentLanguage]}:`, aiResults);
+
+        // Create a combined analysis from all results
+        const combinedAnalysis = {
+            status: getMostSevereStatus(aiResults.map(r => r.status)),
+            issues: [...new Set(aiResults.flatMap(r => r.issues))], // Remove duplicates
+            details: aiResults.map((r, idx) => `Foto ${idx + 1}: ${r.details}`).join('\n\n')
+        };
+
+        currentInspectionData[item.id] = {
+            ...currentInspectionData[item.id],
+            comment: comment,
+            status: combinedAnalysis.status,
+            issues: combinedAnalysis.issues,
+            aiComment: combinedAnalysis.details,
+            timestamp: new Date().toISOString()
+        };
+
+        showNotification('Análisis de OpenAI completado.');
+    } catch (error) {
+        console.error('Error al procesar con OpenAI:', error);
+        showNotification('Error al procesar las imágenes con OpenAI.', 'error');
+        currentInspectionData[item.id].aiComment = 'Error al procesar las imágenes con OpenAI.';
+    }
+
+    advanceToNextItem();
+}
+
+// Add this helper function to determine the most severe status
+function getMostSevereStatus(statuses) {
+    const severityOrder = {
+        'Óptimo': 0,
+        'Desgaste normal': 1,
+        'Desgaste avanzado': 2,
+        'Desinflado': 3,
+        'Ponchado': 4,
+        'Crítico': 5
+    };
+
+    return statuses.reduce((mostSevere, current) => {
+        return (severityOrder[current] || 0) > (severityOrder[mostSevere] || 0) ? current : mostSevere;
+    }, statuses[0] || 'No determinado');
+}
+/*async function nextItem() {
+    console.log('nextItem fue llamado');
+    if (!checkRequirements()) {
+        return;
+    }
+
+    const item = inspectionItems[currentIndex];
+    const requiredPhotos = item.requiredPhotos ?? 1;
+    const currentPhotos = currentInspectionData[item.id]?.photos || [];
+    const comment = document.getElementById('commentBox')?.value.trim() || '';
+
+    if (requiredPhotos === 0) {
+        console.log(`El ítem "${item.name[currentLanguage]}" no requiere fotos, avanzando...`);
+        currentInspectionData[item.id] = {
+            ...currentInspectionData[item.id],
+            comment: comment,
+            status: 'No requiere evaluación',
+            issues: [],
+            aiComment: 'No se requiere análisis de IA para este ítem.'
+        };
+        cleanupMemory();
+        advanceToNextItem();
+        return;
+    }
+
+    if (currentPhotos.length < requiredPhotos) {
+        const missingPhotos = requiredPhotos - currentPhotos.length;
+        showNotification(`Faltan ${missingPhotos} fotos para completar este ítem.`, 'error');
+        return;
+    }
+
     // 🔹 Obtener análisis de OpenAI
     try {
         showNotification('Analizando imágenes con OpenAI...', 'info');
@@ -854,7 +932,7 @@ async function nextItem() {
 
     // Avanzar al siguiente ítem
     advanceToNextItem();
-}
+}*/
 
 
 
@@ -964,12 +1042,12 @@ async function generateInspectionPDF(inspection) {
             y += 10;
 
             // AI Analysis
-            if (itemData.aiComment) {
-                doc.setFont('helvetica', 'italic');
-                const aiLines = doc.splitTextToSize(`AI Analysis: ${itemData.aiComment}`, 170);
-                doc.text(aiLines, 20, y);
-                y += aiLines.length * 6;
-            }
+		if (itemData.aiComment) {
+		    doc.setFont('helvetica', 'italic');
+		    const aiLines = doc.splitTextToSize(itemData.aiComment, 170);
+		    doc.text(aiLines, 20, y);
+		    y += aiLines.length * 6;
+		}
 
             // Issues
             if (itemData.issues && itemData.issues.length > 0) {
