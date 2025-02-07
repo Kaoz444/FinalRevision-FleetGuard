@@ -1660,59 +1660,54 @@ async function openCamera() {
     input.click();
 }
 //funcion para generar el prompt dinamico
-// Replace the existing generateAIPrompt function
 function generateAIPrompt(item) {
     const itemPrompts = {
-        tires: `Analyze tire condition focusing on:
-- Tire pressure (visual signs of under/over inflation)
-- Tread wear condition
-- Visible damage (cuts, bulges, or punctures)
-- Sidewall condition`,
+        tires: `Analiza la llanta enfocándote en:
+- Estado de inflado y deformaciones
+- Condición del dibujo y desgaste
+- Daños visibles (cortes, grietas)
+- Estado general de la banda lateral`,
         
-        mirrors: `Analyze mirror condition focusing on:
-- Mirror glass integrity (cracks, chips)
-- Mount stability and alignment
-- Surface cleanliness and visibility
-- Frame/housing condition`,
+        mirrors: `Analiza el espejo enfocándote en:
+- Integridad del cristal
+- Estabilidad del montaje
+- Visibilidad y limpieza
+- Estado del marco`,
         
-        license_plates: `Analyze license plate condition focusing on:
-- Physical condition (bends, damage)
-- Mounting security
-- Visibility/legibility
-- Presence of obstruction (dirt, debris)`,
+        license_plates: `Analiza la placa enfocándote en:
+- Estado físico (dobladuras, daños)
+- Sujeción y montaje
+- Visibilidad y legibilidad
+- Presencia de obstrucciones`,
         
-        cleanliness: `Analyze vehicle cleanliness focusing on:
-- Overall surface cleanliness
-- Accumulated dirt/debris
-- Presence of stains
-- Windows and lights clarity`,
+        cleanliness: `Analiza la limpieza enfocándote en:
+- Limpieza general de superficies
+- Acumulación de suciedad
+- Manchas visibles
+- Claridad de ventanas y luces`,
         
-        scratches: `Analyze exterior condition focusing on:
-- Visible scratches or scrapes
-- Paint condition and damage
-- Dents or body damage
-- Bumper condition`,
+        scratches: `Analiza el exterior enfocándote en:
+- Rayones o marcas visibles
+- Estado de la pintura
+- Abolladuras o daños
+- Condición de defensas`,
         
-        headlights_taillights: `Analyze lights condition focusing on:
-- Lens clarity and condition
-- Housing integrity
-- Visible damage or cracks
-- Signs of moisture/condensation`,
+        headlights_taillights: `Analiza las luces enfocándote en:
+- Claridad del lente
+- Integridad de la carcasa
+- Daños o grietas
+- Señales de humedad`,
         
-        compartments: `Analyze compartment condition focusing on:
-- Door/hatch functionality
-- Seal condition
-- Interior cleanliness
-- Hinge and latch condition`
+        compartments: `Analiza los compartimentos enfocándote en:
+- Funcionamiento de puertas
+- Estado de sellos
+- Limpieza interior
+- Bisagras y cerraduras`
     };
 
-    const basePrompt = `Provide a concise, professional analysis of the ${item.name.en.toLowerCase()}. 
-Focus only on observable physical condition. Format response as:
-- Current Status
-- Key Issues (if any)
-No recommendations or additional commentary needed.`;
-
-    return `${basePrompt}\n\n${itemPrompts[item.id] || ''}`;
+    return `Analiza este componente y proporciona un reporte técnico conciso en español. 
+Enfócate solo en la condición física observable.
+${itemPrompts[item.id] || ''}`;
 }
 /*async function openCamera() {
     const item = inspectionItems[currentIndex];
@@ -2464,38 +2459,46 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
 }
 
 // Replace the existing processAIResponse function
-function processAIResponse(aiResponse, item) {
-    const conditions = {
-        critical: ['crítico', 'severo', 'urgente', 'roto', 'peligroso', 'ponchado', 'inutilizable'],
-        warning: ['desgaste', 'deterioro', 'atención', 'moderado', 'sucio', 'obstruido'],
-        ok: ['bueno', 'óptimo', 'excelente', 'normal', 'adecuado']
-    };
+async function analyzePhotoWithOpenAI(photos, itemName) {
+    const item = inspectionItems[currentIndex];
+    const prompt = generateAIPrompt(item);
+    const overlay = document.getElementById('analysisOverlay');
 
-    return aiResponse.map(response => {
-        const responseLower = response.details.toLowerCase();
-        let status = 'ok';
+    try {
+        // Show loading overlay
+        overlay.style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
 
-        if (conditions.critical.some(word => responseLower.includes(word))) {
-            status = 'critical';
-        } else if (conditions.warning.some(word => responseLower.includes(word))) {
-            status = 'warning';
+        const response = await fetch('/api/openai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                prompt,
+                images: photos,
+                itemType: item.id
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error en API: ${response.status}`);
         }
 
-        // Clean up response text to remove any informal language
-        let details = response.details
-            .replace(/claro,?\s*/i, '')
-            .replace(/aquí tienes\s*/i, '')
-            .replace(/lo siento,?\s*/i, '')
-            .replace(/puedo\s+ofrecerte?\s*/i, '')
-            .split('.')[0] // Take only the first sentence for conciseness
-            .trim();
+        const data = await response.json();
+        return processAIResponse(data.results, item);
 
-        return {
-            status,
-            issues: extractIssues(responseLower),
-            details: details.charAt(0).toUpperCase() + details.slice(1) // Capitalize first letter
-        };
-    });
+    } catch (error) {
+        console.error('Error en análisis:', error);
+        showNotification('Error en análisis de imágenes', 'error');
+        return [{
+            status: 'error',
+            issues: ['Error en análisis'],
+            details: error.message
+        }];
+    } finally {
+        // Hide loading overlay
+        overlay.style.display = 'none';
+        document.body.style.overflow = ''; // Restore scrolling
+    }
 }
 
 //extraer la informacion de la respuesta de AI
