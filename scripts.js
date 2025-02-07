@@ -609,49 +609,6 @@ function updateInspectionDisplay() {
     currentItemStatus = null;
 }
 
-/*function updateInspectionDisplay() {
-    const item = inspectionItems[currentIndex];
-    if (!item) {
-        console.error('Invalid inspection index');
-        return;
-    }
-
-    // Recuperar datos actuales del ítem o establecer valores por defecto
-    const currentData = currentInspectionData[item.id] || { comment: '', photos: [], status: null };
-
-    // Actualizar elementos de la UI
-    document.getElementById('currentName').textContent = `${item.icon} ${item.name[currentLanguage]}`;
-    document.getElementById('currentDescription').textContent = item.description[currentLanguage];
-
-    // Actualizar caja de comentarios
-    const commentBox = document.getElementById('commentBox');
-    if (commentBox) {
-        commentBox.value = currentData.comment || '';
-    }
-
-    updateCharCount();
-
-    // Limpiar el contenedor de fotos antes de actualizarlo
-    const photoContainer = document.getElementById('photoPreviewContainer');
-    if (photoContainer) {
-        photoContainer.innerHTML = ''; // Borra todas las fotos previas
-    }
-
-    // Mostrar vista previa de la última foto si hay fotos disponibles
-    const photoPreview = document.getElementById('photoPreview');
-    if (photoPreview) {
-        photoPreview.src = '';
-        photoPreview.style.display = 'none';
-
-        if (currentData.photos && currentData.photos.length > 0) {
-            photoPreview.src = currentData.photos[currentData.photos.length - 1];
-            photoPreview.style.display = 'block';
-        }
-    }
-
-    // Mostrar todas las fotos del ítem actual
-    updatePhotoPreview(item.id);
-}*/
 
 // Add overall condition
 function calculateOverallCondition(inspectionData) {
@@ -900,101 +857,7 @@ async function nextItem() {
     advanceToNextItem();
 }
 
-/*async function nextItem() {
-    console.log('nextItem fue llamado');
-    if (!checkRequirements()) {
-        return;
-    }
-    // Obtener el ítem actual y detalles necesarios
-    const item = inspectionItems[currentIndex];
-    const requiredPhotos = item.requiredPhotos ?? 1; // Fotos requeridas, por defecto 1
-    const currentPhotos = currentInspectionData[item.id]?.photos || []; // Fotos actuales
-    const comment = document.getElementById('commentBox')?.value.trim() || ''; // Comentario del inspector
 
-    console.log('Current inspection item:', JSON.stringify(item, null, 2));
-    console.log('Required photos:', requiredPhotos);
-    console.log('Current photos count:', currentPhotos.length);
-
-    // Caso especial: Si no se requieren fotos, avanzar directamente
-    if (requiredPhotos === 0) {
-        console.log(`El ítem "${item.name[currentLanguage]}" no requiere fotos, avanzando...`);
-        currentInspectionData[item.id] = {
-            ...currentInspectionData[item.id],
-            comment: comment,
-            status: currentItemStatus,
-            timestamp: new Date().toISOString(),
-            aiComment: 'No se requiere análisis de IA para este ítem.',
-        };
-
-        // Limpieza de memoria después de guardar los datos
-        cleanupMemory();
-
-        advanceToNextItem();
-        return;
-    }
-
-    // Validar si se han cargado las fotos requeridas antes de avanzar
-    if (currentPhotos.length < requiredPhotos) {
-        const missingPhotos = requiredPhotos - currentPhotos.length;
-        console.warn(`Faltan ${missingPhotos} fotos para completar este ítem.`);
-        showNotification(`Faltan ${missingPhotos} fotos para completar este ítem.`, 'error');
-        return;
-    }
-
-    // Guardar los datos del ítem actual
-    currentInspectionData[item.id] = {
-        ...currentInspectionData[item.id],
-        comment: comment,
-        status: currentItemStatus,
-        timestamp: new Date().toISOString(),
-    };
-
-    // Procesar las fotos y comentarios con OpenAI si aplica
-    if (currentPhotos.length > 0 && comment.length >= 30) {
-        console.log('Llamando a OpenAI con fotos cargadas y comentario válido.');
-        try {
-            showNotification('Procesando imágenes con OpenAI...');
-
-            // Llamada a la función para analizar fotos
-            const aiComment = await analyzePhotoWithOpenAI(currentPhotos);
-
-            // Validar y formatear el comentario de IA
-            if (Array.isArray(aiComment)) {
-                console.log('AI Comment recibido como array:', aiComment);
-                const formattedAIComment = aiComment.map((comment, index) => `Imagen ${index + 1}: ${comment}`).join('\n');
-                currentInspectionData[item.id].aiComment = formattedAIComment;
-            } else if (typeof aiComment === 'string') {
-                console.log('AI Comment recibido como string:', aiComment);
-                currentInspectionData[item.id].aiComment = aiComment;
-            } else {
-                console.error('Formato inesperado del comentario de AI:', aiComment);
-                currentInspectionData[item.id].aiComment = 'Error: Formato inesperado del comentario de AI.';
-            }
-
-            console.log(`AI Comment added for ${item.name[currentLanguage]}:`, currentInspectionData[item.id].aiComment);
-            showNotification('Análisis de OpenAI completado.');
-        } catch (error) {
-            console.error('Error al procesar con OpenAI:', error);
-            showNotification('Error al procesar las imágenes con OpenAI.', 'error');
-            currentInspectionData[item.id].aiComment = 'Error al procesar las imágenes con OpenAI.';
-        }
-    } else {
-        console.log('No hay suficientes fotos o el comentario es insuficiente, se omite el envío a OpenAI.');
-        currentInspectionData[item.id].aiComment = 'No hay suficientes fotos o comentario válido.';
-    }
-
-    // Avanzar al siguiente ítem o completar la inspección
-    if (currentIndex < inspectionItems.length - 1) {
-        currentIndex++;
-        console.log(`Avanzando al siguiente ítem: ${inspectionItems[currentIndex].name[currentLanguage]}`);
-        updateInspectionDisplay();
-        updateProgressBar();
-        currentItemStatus = null; // Reiniciar el estado del ítem actual
-    } else {
-        console.log('Inspección completada.');
-        completeInspection();
-    }
-}*/
 
 function advanceToNextItem() {
     if (currentIndex < inspectionItems.length - 1) {
@@ -1221,215 +1084,6 @@ function hexToRGB(hex) {
     const b = parseInt(hex.slice(5, 7), 16);
     return [r, g, b];
 }
-/*async function generateInspectionPDF(inspection) {
-    const { jsPDF } = window.jspdf;
-    if (!jsPDF) {
-        console.error('Biblioteca de generación de PDF no cargada');
-        return null;
-    }
-
-    try {
-        const doc = new jsPDF();
-        let y = 40;
-
-        doc.setFillColor(59, 130, 246);
-        doc.rect(0, 0, doc.internal.pageSize.getWidth(), 30, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(20);
-        doc.text('FleetGuard Inspection Report', 20, 20);
-
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(12);
-        const basicInfo = [
-            `Inspector: ${inspection.worker}`,
-            `Vehicle ID: ${inspection.truckId}`,
-            `Date: ${inspection.date}`
-        ];
-
-        basicInfo.forEach(info => {
-            doc.text(info, 20, y);
-            y += 10;
-        });
-
-        // 🔹 Agregar datos de inspección
-        Object.entries(inspection.data).forEach(([key, value]) => {
-            const item = inspectionItems.find(i => i.id === key);
-            if (!item) return;
-
-            if (y > doc.internal.pageSize.getHeight() - 60) {
-                doc.addPage();
-                y = 20;
-            }
-
-            y += 10;
-            doc.setFontSize(16);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`${item.name[currentLanguage]}`, 20, y);
-            y += 10;
-
-            doc.setFontSize(12);
-            doc.text(`Estado: ${value.status.toUpperCase()}`, 20, y);
-            y += 10;
-
-            if (value.issues.length > 0) {
-                doc.text(`Problemas detectados: ${value.issues.join(', ')}`, 20, y);
-                y += 10;
-            }
-
-            doc.setFont('helvetica', 'italic');
-            const aiLines = doc.splitTextToSize(`Análisis de IA: ${value.aiComment}`, 170);
-            doc.text(aiLines, 20, y);
-            y += aiLines.length * 6;
-        });
-
-        doc.setFontSize(10);
-        doc.text(`Generado: ${new Date().toLocaleString()}`, 20, doc.internal.pageSize.getHeight() - 10);
-
-        const filename = `FleetGuard_${inspection.truckId}_${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}.pdf`;
-        doc.save(filename);
-        return true;
-
-    } catch (error) {
-        console.error('Error generando PDF:', error);
-        return null;
-    }
-}*/
-
-/*async function generateInspectionPDF(inspection) {
-    const { jsPDF } = window.jspdf;
-    if (!jsPDF) {
-        console.error('PDF generation library not loaded');
-        return null;
-    }
-
-    try {
-        const doc = new jsPDF();
-        let y = 40;
-
-        // Header
-        doc.setFillColor(59, 130, 246);
-        doc.rect(0, 0, doc.internal.pageSize.getWidth(), 30, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(20);
-        doc.text('FleetGuard Inspection Report', 20, 20);
-
-        // Basic Info
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(12);
-        const basicInfo = [
-            `Inspector: ${inspection.worker}`,
-            `Vehicle ID: ${inspection.truckId}`,
-            `Date: ${inspection.date}`,
-            `Overall Score: ${inspection.overall_condition.toFixed(1)}%`,
-            `Critical Issues: ${inspection.critical_count}`,
-            `Warnings: ${inspection.warning_count}`
-        ];
-
-        basicInfo.forEach(info => {
-            doc.text(info, 20, y);
-            y += 10;
-        });
-
-        // Inspection Items
-        Object.entries(inspection.data).forEach(([key, value]) => {
-            const item = inspectionItems.find(i => i.id === key);
-            if (!item) return;
-
-            if (y > doc.internal.pageSize.getHeight() - 60) {
-                doc.addPage();
-                y = 20;
-            }
-
-            // Item Header
-            y += 20;
-            doc.setFontSize(16);
-            doc.setFont('helvetica', 'bold');
-            doc.text(`${item.name[currentLanguage]}`, 20, y);
-            y += 10;
-
-            // Status
-            doc.setFontSize(12);
-            doc.text(`Status: ${value.status.toUpperCase()}`, 20, y);
-            y += 10;
-
-            // Inspector Comments
-            if (value.comment) {
-                doc.setFont('helvetica', 'normal');
-                const commentLines = doc.splitTextToSize(`Inspector: ${value.comment}`, 170);
-                doc.text(commentLines, 20, y);
-                y += commentLines.length * 6;
-            }
-
-            // AI Analysis
-            if (value.aiComment) {
-                doc.setFont('helvetica', 'italic');
-                const aiLines = doc.splitTextToSize(`AI Analysis: ${value.aiComment}`, 170);
-                doc.text(aiLines, 20, y);
-                y += aiLines.length * 6;
-            }
-
-            // Photos with captions
-            if (value.photos && value.photos.length > 0) {
-                let xOffset = 20;
-                const photoWidth = 50;
-                const photoHeight = 50;
-                const maxPhotosPerRow = 3;
-
-                value.photos.forEach((photo, photoIndex) => {
-                    if (xOffset + photoWidth > doc.internal.pageSize.getWidth() - 20) {
-                        xOffset = 20;
-                        y += photoHeight + 20;
-                    }
-
-                    if (y + photoHeight > doc.internal.pageSize.getHeight() - 20) {
-                        doc.addPage();
-                        y = 20;
-                    }
-
-                    try {
-                        doc.addImage(photo, 'JPEG', xOffset, y, photoWidth, photoHeight);
-                        doc.setFontSize(8);
-                        doc.text(`Photo ${photoIndex + 1}`, xOffset, y + photoHeight + 5);
-                        xOffset += photoWidth + 10;
-
-                        if ((photoIndex + 1) % maxPhotosPerRow === 0) {
-                            xOffset = 20;
-                            y += photoHeight + 20;
-                        }
-                    } catch (error) {
-                        console.error(`Error adding photo ${photoIndex + 1}:`, error);
-                    }
-                });
-
-                y += photoHeight + 20;
-            }
-
-            y += 10;
-        });
-
-        // Footer
-        doc.setFontSize(10);
-        doc.text(`Generated: ${new Date().toLocaleString()}`, 20, doc.internal.pageSize.getHeight() - 10);
-
-        const timestamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15);
-        const filename = `FleetGuard_${inspection.truckId}_${timestamp}.pdf`;
-
-        const pdfBase64 = doc.output('datauristring');
-        
-        await fetch('/api/uploadPDF', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pdfData: pdfBase64, filename })
-        });
-
-        doc.save(filename);
-        return true;
-
-    } catch (error) {
-        console.error('Error generating PDF:', error);
-        return null;
-    }
-}*/
 
 async function getTruckInfo(truckId) {
     // Simula una consulta a la base de datos o API
@@ -1575,35 +1229,7 @@ function validateNextButton(charCount, minCharLimit, maxCharLimit) {
         nextButton.classList.remove('disabled');
     }
 }
-/*function validateNextButton(charCount, minCharLimit, maxCharLimit) {
-    const nextButton = document.getElementById('nextButton');
-    if (!nextButton) return;
 
-    // Obtener el ítem actual y sus datos
-    const item = inspectionItems[currentIndex];
-    const currentData = currentInspectionData[item.id] || {};
-    const comment = document.getElementById('commentBox')?.value || '';
-    const photoCount = currentData.photos?.length || 0;
-    const requiredPhotos = item?.requiredPhotos || 0;
-
-    // Validar condiciones
-    const isValid = 
-        currentData.status && 
-        charCount >= minCharLimit && 
-        charCount <= maxCharLimit && 
-        comment.length >= 30 && 
-        comment.length <= 150 && 
-        (requiredPhotos === 0 || photoCount >= requiredPhotos);
-
-    // Actualizar estado del botón
-    nextButton.disabled = !isValid;
-    if (!isValid) {
-        nextButton.classList.add('disabled');
-        checkRequirements();
-    } else {
-        nextButton.classList.remove('disabled');
-    }
-}*/
 function updateCharCount() {
     const commentBox = document.getElementById('commentBox');
     const charCountDisplay = document.getElementById('charCount');
@@ -1709,53 +1335,6 @@ function generateAIPrompt(item) {
 Enfócate solo en la condición física observable.
 ${itemPrompts[item.id] || ''}`;
 }
-/*async function openCamera() {
-    const item = inspectionItems[currentIndex];
-    const requiredPhotos = item.requiredPhotos || 0;
-
-    if (requiredPhotos === 0) {
-        showNotification(`El ítem "${item.name[currentLanguage]}" no requiere fotos.`, 'info');
-        return;
-    }
-
-    if (!currentInspectionData[item.id]) {
-        currentInspectionData[item.id] = { photos: [] };
-    } else if (!currentInspectionData[item.id].photos) {
-        currentInspectionData[item.id].photos = [];
-    }
-
-    if (currentInspectionData[item.id].photos.length >= requiredPhotos) {
-        showNotification('Ya se han tomado todas las fotos requeridas.', 'warning');
-        return;
-    }
-
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment';
-
-    input.addEventListener('change', async (event) => {
-        const file = event.target.files[0];
-
-        if (!file) return;
-
-        const processedImage = await handleImageProcessing(file);
-        if (!processedImage) {
-            showNotification('Error al procesar la imagen', 'error');
-            return;
-        }
-
-        // Agregamos la nueva foto a la lista en lugar de reemplazarla
-        currentInspectionData[item.id].photos.push(processedImage);
-
-        // Mostrar todas las fotos en la UI
-        updatePhotoPreview(item.id);
-
-        showNotification(`Foto ${currentInspectionData[item.id].photos.length} de ${requiredPhotos} guardada.`, 'info');
-    });
-
-    input.click();
-}*/
 
 function updatePhotoPreview(itemId) {
     const photoContainer = document.getElementById('photoPreviewContainer'); 
@@ -2106,173 +1685,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
-/*async function displayRecords(page = 1) {
-    const recordsContainer = document.getElementById('recordsContainer');
-    if (!recordsContainer) return;
-
-    try {
-        // Log del inicio de la función y el parámetro de página
-        console.log('Displaying records for page:', page);
-
-        // Validar si el trabajador actual está disponible
-        console.log('Current worker state:', currentWorker);
-        if (!currentWorker || !currentWorker.id) {
-            throw new Error('No worker information available');
-        }
-
-        // Mostrar estado de carga
-        recordsContainer.innerHTML = '<div class="loading-spinner"></div>';
-
-        // Obtener registros desde el backend o localStorage
-        console.log('Fetching inspection records...');
-        const records = await fetchInspectionRecords(
-            currentWorker.id,
-            currentWorker.role === 'admin'
-        );
-        console.log('Fetched records:', records);
-
-        // Limpiar el estado de carga
-        recordsContainer.innerHTML = '';
-
-        // Validar si no hay registros
-        if (!records || records.length === 0) {
-            console.warn('No inspection records found.');
-            recordsContainer.innerHTML = `
-                <p class="text-center">
-                    <span data-lang="en">No inspection records found.</span>
-                    <span data-lang="es">No se encontraron registros de inspección.</span>
-                </p>
-            `;
-            return;
-        }
-
-        // Filtrar registros según el rol del usuario
-        let filteredRecords = records;
-        console.log('Current worker role:', currentWorker.role);
-        if (currentWorker.role !== 'admin') {
-            filteredRecords = filteredRecords.filter(record =>
-                record.worker_id === currentWorker.id || record.worker === currentWorker.name
-            );
-            console.log('Filtered records for non-admin user:', filteredRecords);
-        } else {
-            // Manejar búsqueda y filtros para administradores
-            console.log('Admin search and filters active...');
-            const searchTerm = document.getElementById('recordSearchInput')?.value?.toLowerCase();
-            const statusFilter = document.getElementById('recordFilterStatus')?.value;
-
-            if (searchTerm) {
-                console.log('Applying search term filter:', searchTerm);
-                filteredRecords = filteredRecords.filter(record =>
-                    (record.worker?.toLowerCase().includes(searchTerm) ||
-                        record.worker_id?.toLowerCase().includes(searchTerm)) ||
-                    (record.truckId?.toLowerCase().includes(searchTerm) ||
-                        record.truck_id?.toLowerCase().includes(searchTerm))
-                );
-                console.log('Records after search term filter:', filteredRecords);
-            }
-
-            if (statusFilter && statusFilter !== 'all') {
-                console.log('Applying status filter:', statusFilter);
-                filteredRecords = filteredRecords.filter(record =>
-                    (record.status === statusFilter) ||
-                    (Object.values(record.data || {}).some(item => item.status === statusFilter))
-                );
-                console.log('Records after status filter:', filteredRecords);
-            }
-        }
-
-        // Ordenar registros por fecha (los más recientes primero)
-        console.log('Sorting records by date...');
-        filteredRecords.sort((a, b) => new Date(b.created_at || b.date) - new Date(a.created_at || a.date));
-        console.log('Sorted records:', filteredRecords);
-
-        // Paginación
-        const recordsPerPage = 10;
-        const totalPages = Math.ceil(filteredRecords.length / recordsPerPage);
-        const startIndex = (page - 1) * recordsPerPage;
-        const paginatedRecords = filteredRecords.slice(startIndex, startIndex + recordsPerPage);
-        console.log(`Paginated records (Page ${page}):`, paginatedRecords);
-
-        // Mostrar mensaje si no hay registros en la página actual
-        if (paginatedRecords.length === 0) {
-            console.warn('No inspection records found for this page.');
-            recordsContainer.innerHTML = `
-                <p class="text-center">
-                    <span data-lang="en">No inspection records found.</span>
-                    <span data-lang="es">No se encontraron registros de inspección.</span>
-                </p>
-            `;
-            return;
-        }
-
-        // Renderizar los registros
-        console.log('Rendering records...');
-        paginatedRecords.forEach((record) => {
-            const criticalCount = record.critical_count || Object.values(record.data || {}).filter(item => item.status === 'critical').length;
-            const warningCount = record.warning_count || Object.values(record.data || {}).filter(item => item.status === 'warning').length;
-
-            const recordItem = document.createElement('div');
-            recordItem.className = 'record-item';
-
-            recordItem.innerHTML = `
-                <div class="record-details">
-                    <strong>${record.worker || record.worker_id}</strong>
-                    <div class="record-metadata">
-                        <span class="record-timestamp">${new Date(record.created_at || record.date).toLocaleString()}</span>
-                        ${criticalCount > 0 ?
-                            `<span class="record-status status-critical">${criticalCount} Critical</span>` :
-                            ''}
-                        ${warningCount > 0 ?
-                            `<span class="record-status status-warning">${warningCount} Warning</span>` :
-                            ''}
-                    </div>
-                    <div>Truck ID: ${record.truckId || record.truck_id}</div>
-                </div>
-                <div class="record-actions">
-                    <button class="btn btn-secondary" onclick="viewRecordDetails('${record.id || record.truckId}')">
-                        <span data-lang="en">Details</span>
-                        <span data-lang="es">Detalles</span>
-                    </button>
-                    ${record.pdf_url || record.pdfUrl ?
-                        `<a href="${record.pdf_url || record.pdfUrl}" target="_blank" class="btn btn-secondary">PDF</a>` :
-                        `<button class="btn btn-secondary" onclick="downloadPDF('${record.id || record.truckId}')">
-                            <span data-lang="en">Generate PDF</span>
-                            <span data-lang="es">Generar PDF</span>
-                        </button>`
-                    }
-                </div>
-            `;
-
-            recordsContainer.appendChild(recordItem);
-        });
-
-        // Actualizar controles de paginación
-        const pageInfo = document.getElementById('pageInfo');
-        const prevPage = document.getElementById('prevPage');
-        const nextPage = document.getElementById('nextPage');
-
-        if (pageInfo) pageInfo.textContent = `Page ${page} of ${totalPages}`;
-        if (prevPage) prevPage.disabled = page === 1;
-        if (nextPage) nextPage.disabled = page === totalPages;
-
-        console.log('Pagination updated.');
-
-        // Actualizar idioma
-        updateLanguage();
-        console.log('Language updated.');
-
-    } catch (error) {
-        console.error('Error in displayRecords:', error);
-        recordsContainer.innerHTML = `
-            <p class="text-center text-error">
-                <span data-lang="en">Error loading inspection records.</span>
-                <span data-lang="es">Error al cargar los registros de inspección.</span>
-            </p>
-        `;
-        showNotification('Error loading inspection records', 'error');
-    }
-}*/
-
 // Add event listeners
 document.addEventListener('DOMContentLoaded', () => {
     // Initialize pagination controls
@@ -2376,62 +1788,30 @@ async function resizeImage(file, maxWidth = 1280, maxHeight = 960, quality = 0.7
     });
 }
 
-/*async function resizeImage(file, maxWidth = 1280, maxHeight = 960, quality = 0.75) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        
-        reader.onload = (e) => {
-            const img = new Image();
-            
-            img.onload = () => {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext('2d');
-
-                // Calculate new dimensions
-                let width = img.width;
-                let height = img.height;
-
-                if (width > height) {
-                    if (width > maxWidth) {
-                        height *= maxWidth / width;
-                        width = maxWidth;
-                    }
-                } else {
-                    if (height > maxHeight) {
-                        width *= maxHeight / height;
-                        height = maxHeight;
-                    }
-                }
-
-                // Set canvas dimensions
-                canvas.width = width;
-                canvas.height = height;
-
-                // Draw and compress image
-                ctx.drawImage(img, 0, 0, width, height);
-
-                // Convert to base64
-                resolve(canvas.toDataURL('image/jpeg', quality));
-            };
-
-            img.onerror = () => reject(new Error('Error loading image'));
-            img.src = e.target.result;
-        };
-
-        reader.onerror = () => reject(new Error('Error reading file'));
-        reader.readAsDataURL(file);
-    });
-}*/
-// Replace the existing processAIResponse function
+// Replace the existing analyzePhotoWithOpenAI function
 async function analyzePhotoWithOpenAI(photos, itemName) {
     const item = inspectionItems[currentIndex];
     const prompt = generateAIPrompt(item);
-    const overlay = document.getElementById('analysisOverlay');
+    let overlay = null;
 
     try {
-        // Show loading overlay
-        overlay.style.display = 'flex';
-        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        // Create overlay
+        overlay = document.createElement('div');
+        overlay.className = 'processing-overlay';
+        overlay.innerHTML = `
+            <div class="processing-message">
+                <div class="loading-spinner"></div>
+                <p>Analizando imagen con IA...</p>
+            </div>
+        `;
+
+        // Add overlay to document
+        if (document.body) {
+            document.body.appendChild(overlay);
+            document.body.style.overflow = 'hidden';
+        }
+
+        showNotification('Analizando imágenes...', 'info');
 
         const response = await fetch('/api/openai', {
             method: 'POST',
@@ -2459,230 +1839,20 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
             details: error.message
         }];
     } finally {
-        // Hide loading overlay
-        overlay.style.display = 'none';
-        document.body.style.overflow = ''; // Restore scrolling
+        // Cleanup: remove overlay and restore scrolling
+        try {
+            if (overlay && overlay.parentNode) {
+                overlay.parentNode.removeChild(overlay);
+            }
+            if (document.body) {
+                document.body.style.overflow = '';
+            }
+        } catch (cleanupError) {
+            console.error('Error cleaning up overlay:', cleanupError);
+        }
     }
 }
 
-//extraer la informacion de la respuesta de AI
-//extraccion de la informacion para la respuesta
-function extractIssues(text) {
-    // Palabras clave que indican problemas
-    const issueKeywords = {
-        desgaste: [
-            'desgaste', 'gastado', 'deterioro', 'deteriorado',
-            'uso excesivo', 'desgastado'
-        ],
-        daño: [
-            'daño', 'dañado', 'rotura', 'roto', 'grieta',
-            'rajadura', 'abolladura', 'rayón', 'golpe'
-        ],
-        suciedad: [
-            'sucio', 'suciedad', 'manchas', 'residuos',
-            'polvo', 'contaminación'
-        ],
-        presión: [
-            'presión baja', 'desinflado', 'inflación irregular',
-            'ponchado', 'fuga'
-        ],
-        alineación: [
-            'desalineado', 'desbalanceado', 'irregular',
-            'desajustado', 'mal ajuste'
-        ]
-    };
-
-    const issues = [];
-    const textLower = text.toLowerCase();
-
-    // Revisar cada categoría de problemas
-    Object.entries(issueKeywords).forEach(([category, keywords]) => {
-        if (keywords.some(keyword => textLower.includes(keyword))) {
-            switch (category) {
-                case 'desgaste':
-                    if (textLower.includes('excesivo')) {
-                        issues.push('Desgaste excesivo');
-                    } else {
-                        issues.push('Desgaste normal');
-                    }
-                    break;
-                case 'daño':
-                    if (textLower.includes('severo') || textLower.includes('grave')) {
-                        issues.push('Daño estructural');
-                    } else {
-                        issues.push('Daño cosmético menor');
-                    }
-                    break;
-                case 'suciedad':
-                    issues.push('Acumulación de suciedad');
-                    break;
-                case 'presión':
-                    if (textLower.includes('ponchado') || textLower.includes('fuga')) {
-                        issues.push('Pérdida total de presión');
-                    } else {
-                        issues.push('Presión baja visible');
-                    }
-                    break;
-                case 'alineación':
-                    issues.push('Falta de ajuste adecuado');
-                    break;
-            }
-        }
-    });
-
-    // Si no se encontraron problemas, considerar si el texto indica buen estado
-    if (issues.length === 0) {
-        if (textLower.includes('buen estado') || 
-            textLower.includes('óptimo') || 
-            textLower.includes('excelente')) {
-            issues.push('No presenta problemas');
-        } else {
-            issues.push('Condición normal');
-        }
-    }
-
-    return issues;
-}
-/*async function analyzePhotoWithOpenAI(base64Images) {
-    console.log('Starting analyzePhotoWithOpenAI function...');
-
-    // Crear y mostrar overlay
-    const overlay = document.createElement('div');
-    overlay.className = 'processing-overlay';
-    overlay.innerHTML = `
-        <div class="processing-message">
-            <div class="loading-spinner"></div>
-            <p>Analyzing photo with AI...</p>
-        </div>
-    `;
-    document.body.appendChild(overlay);
-
-    const item = inspectionItems[currentIndex];
-
-    if (!item) {
-        console.error('No current inspection item found!');
-        document.body.removeChild(overlay); // Asegurarse de quitar el overlay si hay error
-        return 'Error: No current inspection item found';
-    }
-
-    const componentName = item.name[currentLanguage];
-    console.log('Current inspection item:', JSON.stringify(item, null, 2));
-    console.log('Component name:', componentName);
-    console.log('Base64 images count:', base64Images.length);
-
-    // Verificar si el ítem no requiere fotos
-    if (item.requiredPhotos === 0) {
-        console.log(`No photo analysis required for component: ${componentName}`);
-        document.body.removeChild(overlay); // Quitar el overlay antes de salir
-        return `Component: ${componentName}\nStatus: No photo analysis required`;
-    }
-
-    if (!Array.isArray(base64Images) || base64Images.length === 0) {
-        console.error('No images provided for analysis');
-        document.body.removeChild(overlay); // Quitar el overlay antes de salir
-        return `Error: No images provided for analysis for ${componentName}`;
-    }
-
-    // Listas predefinidas de estados y problemas
-	const validStatuses = [
-	    "Condición óptima",
-	    "Leve desgaste",
-	    "Desgaste moderado", 
-	    "Requiere reparación menor",
-	    "Requiere reparación urgente",
-	    "No funcional",
-	    "Llanta ponchada"
-	];
-	
-	const validIssues = [
-	    "No presenta problemas",
-	    "Sin desgaste visible",
-	    "Condición normal",
-	    "Daño cosmético menor",
-	    "Daño estructural",
-	    "Problema funcional",
-	    "Conexión floja",
-	    "Falta de ajuste adecuado",
-	    "Acumulación de suciedad",
-	    "Pérdida total de presión",
-	    "Objeto punzante visible"
-	];
-
-    try {
-        const responses = await Promise.allSettled(
-            base64Images.map(async (base64Image, index) => {
-                const payload = {
-                    prompt: componentName,
-                    image: base64Image.split(',')[1], // Base64 sin el prefijo
-                };
-
-                console.log(`Payload enviado al backend para imagen ${index + 1}:`, JSON.stringify(payload, null, 2));
-
-                const response = await fetch('/api/openai', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload),
-                });
-
-                console.log(`Response status for image ${index + 1}:`, response.status);
-
-                if (!response.ok) {
-                    const errorDetails = await response.text();
-                    console.error(`HTTP error for image ${index + 1}:`, response.status, errorDetails);
-                    throw new Error(`HTTP error: ${response.status} - ${errorDetails}`);
-                }
-
-                const data = await response.json();
-                console.log(`Response data for image ${index + 1}:`, JSON.stringify(data, null, 2));
-
-                if (data.refusal) {
-                    console.warn(`Refusal for image ${index + 1}:`, data.refusal);
-                    return `Refusal for image ${index + 1}: ${data.refusal}`;
-                }
-
-                if (data.result?.component && data.result?.status) {
-                    const status = data.result.status;
-                    const issues = data.result.issues || [];
-
-                    // Validar el estado y los problemas
-                    if (!validStatuses.includes(status)) {
-                        console.error(`Invalid status received for image ${index + 1}:`, status);
-                        return `Error: Invalid status received for image ${index + 1}`;
-                    }
-
-                    const invalidIssues = issues.filter(issue => !validIssues.includes(issue));
-                    if (invalidIssues.length > 0) {
-                        console.error(`Invalid issues received for image ${index + 1}:`, invalidIssues);
-                        return `Error: Invalid issues received for image ${index + 1}`;
-                    }
-
-                    return `Component: ${data.result.component}\nStatus: ${status}\nIssues: ${issues.join(', ') || 'Ninguno'}`;
-                } else {
-                    console.error(`Invalid response format for image ${index + 1}:`, JSON.stringify(data, null, 2));
-                    return `Error: Invalid response format for image ${index + 1}`;
-                }
-            })
-        );
-
-        const processedResponses = responses.map((result, index) => {
-            if (result.status === 'fulfilled') {
-                return result.value;
-            } else {
-                console.error(`Error processing image ${index + 1}:`, result.reason);
-                return `Error processing image ${index + 1}: ${result.reason.message}`;
-            }
-        });
-
-        console.log('All responses processed:', JSON.stringify(processedResponses, null, 2));
-        return processedResponses.join('\n');
-    } catch (error) {
-        console.error('Unexpected error analyzing photos:', error);
-        return 'Error analyzing photos';
-    } finally {
-        // Quitar el overlay cuando termine el proceso
-        document.body.removeChild(overlay);
-    }
-}*/
 
 // Admin Dashboard Functions
 function showAdminDashboard() {
@@ -2928,60 +2098,6 @@ async function saveUserEdits() {
     }
 }
 
-
-/*async function displayUsers() {
-    const tableBody = document.getElementById('userTableBody');
-    if (!tableBody) return;
-    
-    try {
-        // Show loading state
-        tableBody.innerHTML = '<tr><td colspan="6" class="text-center">Loading users...</td></tr>';
-        
-        // Fetch workers from Supabase
-        const response = await fetch(`/api/getWorkers?id=${userId}`);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const data = await response.json();
-        
-        if (!data.workers) {
-            throw new Error('No workers data received');
-        }
-        
-        // Clear loading state
-        tableBody.innerHTML = '';
-        
-        // Display workers
-        data.workers.forEach(user => {
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${user.id || ''}</td>
-                <td>${user.name || ''}</td>
-                <td>${user.role || ''}</td>
-                <td>${formatDateTime(user.last_activity) || 'No activity'}</td>
-                <td><span class="status-badge ${user.status}">${user.status || 'inactive'}</span></td>
-                <td>
-                    <button class="btn btn-secondary" onclick="editUser('${user.id}')">Edit</button>
-                    <button class="btn btn-secondary" onclick="toggleUserStatus('${user.id}')">
-                        ${user.status === 'active' ? 'Deactivate' : 'Activate'}
-                    </button>
-                </td>
-            `;
-            tableBody.appendChild(row);
-        });
-    } catch (error) {
-        console.error('Error fetching workers:', error);
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="6" class="text-center text-error">
-                    Error loading users. Please try again.
-                </td>
-            </tr>
-        `;
-        showNotification('Error loading users', 'error');
-    }
-}*/
-
 // Formateo de la fecha
 function formatDateTime(dateString) {
     if (!dateString) return '';
@@ -3067,112 +2183,6 @@ function updateMetricsDisplay() {
     createChart('fleetConditionChart', 'line', records.map(r => new Date(r.date).toLocaleDateString()), fleetConditions, { label: 'Vehicle Condition %', borderColor: '#3b82f6', tension: 0.1, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: value => value + '%' } } } });
 }
 
-/*function updateMetricsDisplay() {
-    // Get all inspection records
-    const records = JSON.parse(localStorage.getItem('inspectionRecords') || '[]');
-    const fleetConditions = records.map(record => record.overallCondition?.score || 0);
-    //calculate average overallcondition
-    const averageCondition = fleetConditions.length > 0
-    ? fleetConditions.reduce((acc, curr) => acc + curr, 0) / fleetConditions.length
-    : 0;
-    // Calculate average inspection time
-    const timesWithDuration = records.filter(record => record.duration);
-    const averageTime = timesWithDuration.length > 0
-        ? timesWithDuration.reduce((acc, curr) => acc + curr.duration, 0) / timesWithDuration.length
-        : 0;
-        
-    // Calculate times by inspector
-    const inspectorTimes = {};
-    timesWithDuration.forEach(record => {
-        if (!inspectorTimes[record.worker]) {
-            inspectorTimes[record.worker] = [];
-        }
-        inspectorTimes[record.worker].push(record.duration);
-    });
-
-    // Format time for display
-    const formatTime = (seconds) => {
-        const minutes = Math.floor(seconds / 60);
-        const remainingSeconds = Math.round(seconds % 60);
-        return `${minutes}m ${remainingSeconds}s`;
-    };
-
-    // Update the average time card
-    const averageTimeDisplay = document.getElementById('averageTimeValue');
-    if (averageTimeDisplay) {
-        averageTimeDisplay.textContent = formatTime(averageTime);
-    }
-     // Update the overall condition card
-    const fleetConditionDisplay = document.getElementById('fleetConditionValue');
-    if (fleetConditionDisplay) {
-    fleetConditionDisplay.textContent = `${averageCondition.toFixed(1)}%`;
-    }
-    // Destroy existing chart if it exists
-    const existingChart = Chart.getChart('inspectionTimesChart');
-    if (existingChart) {
-        existingChart.destroy();
-    }
-
-    // Create data for the chart
-    const chartData = Object.entries(inspectorTimes).map(([inspector, times]) => ({
-        inspector,
-        averageTime: times.reduce((acc, curr) => acc + curr, 0) / times.length
-    }));
-    
-    // Update the chart
-    const ctx = document.getElementById('inspectionTimesChart');
-    if (ctx && window.Chart) {
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: chartData.map(d => d.inspector),
-                datasets: [{
-                    label: 'Average Inspection Time (seconds)',
-                    data: chartData.map(d => d.averageTime),
-                    backgroundColor: '#3b82f6'
-                }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Time (seconds)'
-                        }
-                    }
-                }
-            }
-        });
-    }
-    // Create fleet condition chart
-    const fleetCtx = document.getElementById('fleetConditionChart');
-	if (fleetCtx && window.Chart) {
-	    new Chart(fleetCtx, {
-	        type: 'line',
-	        data: {
-	            labels: records.map(r => new Date(r.date).toLocaleDateString()),
-	            datasets: [{
-	                label: 'Vehicle Condition %',
-	                data: fleetConditions,
-	                borderColor: '#3b82f6',
-	                tension: 0.1
-	            }]
-	        },
-	        options: {
-	            responsive: true,
-	            scales: {
-	                y: {
-	                    beginAtZero: true,
-	                    max: 100
-	                }
-	            }
-	        }
-	    });
-	  }
-
-}*/
 //funcion para mostrar y seleccionar los records basandome en el usuario
 async function displayRecords(page = 1) {
     const recordsContainer = document.getElementById('recordsContainer');
@@ -3374,26 +2384,6 @@ async function editUser(userId) {
 }
 
 
-/*function editUser(userId) {
-    const user = workers[userId];
-    if (!user) return;
-
-    const elements = {
-        modal: document.getElementById('userModal'),
-        title: document.getElementById('modalTitle'),
-        id: document.getElementById('userId'),
-        name: document.getElementById('userName'),
-        role: document.getElementById('userRole'),
-        password: document.getElementById('userPassword')
-    };
-
-    elements.title.textContent = 'Edit User';
-    elements.id.value = user.id;
-    elements.name.value = user.name;
-    elements.role.value = user.role;
-    elements.password.value = user.password;
-    elements.modal.style.display = 'block';
-}*/
 //Funcion para crear usuarios a la base de datos
 async function handleUserSubmit(event) {
     event.preventDefault();
