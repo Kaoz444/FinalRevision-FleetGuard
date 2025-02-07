@@ -921,6 +921,8 @@ async function generateInspectionPDF(inspection) {
         };
 
         const addSectionHeader = (text, yPos) => {
+	    // Add extra spacing before the section header
+   	    yPos += 15;
             doc.setFillColor(240, 240, 240);
             doc.rect(15, yPos - 6, doc.internal.pageSize.getWidth() - 30, 10, 'F');
             doc.setTextColor(0, 0, 0);
@@ -1046,9 +1048,12 @@ async function generateInspectionPDF(inspection) {
 				        const totalTextHeight = titleHeight + statusHeight + issuesHeight + detailsHeight + 20; // Added padding
 				        requiredHeight = Math.max(photoHeight, totalTextHeight);
 				    }
-				    
+	
+				    // Add spacing between containers
+					y += 10;
+					
 				    // Check if we need a new page for the entire container
-				    if (y + requiredHeight + 20 > doc.internal.pageSize.getHeight()) {
+				    if (y + requiredHeight + 30 > doc.internal.pageSize.getHeight()) {
 				        doc.addPage();
 				        addHeader();
 				        y = 45;
@@ -1120,7 +1125,7 @@ async function generateInspectionPDF(inspection) {
                         doc.text(`Error loading photo ${photoIndex + 1}`, 20, y + 30);
                     }
 
-                    y += photoHeight + 15;
+                    y += photoHeight + 30;
                 });
             }
 
