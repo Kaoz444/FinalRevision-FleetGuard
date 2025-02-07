@@ -41,8 +41,7 @@ export default async function handler(req, res) {
                                     "status": "Uno de: Óptimo, Desgaste normal, Desgaste avanzado, Desinflado, Ponchado, Crítico",
                                     "issues": ["Lista específica de problemas detectados"],
                                     "details": "Descripción técnica detallada del estado"
-                                }
-                                
+                                }        
                                 Reglas críticas:
                                 - NO incluyas el campo "component"
                                 - Si ves cualquier desgaste, NUNCA uses "Óptimo"
