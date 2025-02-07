@@ -1659,23 +1659,59 @@ async function openCamera() {
     input.click();
 }
 //funcion para generar el prompt dinamico
+// Replace the existing generateAIPrompt function
 function generateAIPrompt(item) {
-    const basePrompt = `Analiza detalladamente la siguiente imagen de ${item.name[currentLanguage]} y describe:
-1. Estado físico general
-2. Cualquier daño o desgaste visible
-3. Problemas específicos que requieran atención
-4. Recomendaciones basadas en lo observado`;
-
-    const specificPrompts = {
-        tires: 'Enfócate en el desgaste del dibujo, presión visible, deformaciones o daños en la estructura.',
-        mirrors: 'Evalúa la integridad del espejo, sujeción, visibilidad y cualquier daño en el cristal.',
-        license_plates: 'Verifica la legibilidad, estado físico y sujeción de la placa.',
-        headlights_taillights: 'Examina la claridad del lente, grietas, humedad interior y funcionamiento visible.',
-        cleanliness: 'Evalúa el nivel de suciedad, manchas o residuos visibles.',
-        compartments: 'Inspecciona el estado de las bisagras, cerraduras y superficies interiores.'
+    const itemPrompts = {
+        tires: `Analyze tire condition focusing on:
+- Tire pressure (visual signs of under/over inflation)
+- Tread wear condition
+- Visible damage (cuts, bulges, or punctures)
+- Sidewall condition`,
+        
+        mirrors: `Analyze mirror condition focusing on:
+- Mirror glass integrity (cracks, chips)
+- Mount stability and alignment
+- Surface cleanliness and visibility
+- Frame/housing condition`,
+        
+        license_plates: `Analyze license plate condition focusing on:
+- Physical condition (bends, damage)
+- Mounting security
+- Visibility/legibility
+- Presence of obstruction (dirt, debris)`,
+        
+        cleanliness: `Analyze vehicle cleanliness focusing on:
+- Overall surface cleanliness
+- Accumulated dirt/debris
+- Presence of stains
+- Windows and lights clarity`,
+        
+        scratches: `Analyze exterior condition focusing on:
+- Visible scratches or scrapes
+- Paint condition and damage
+- Dents or body damage
+- Bumper condition`,
+        
+        headlights_taillights: `Analyze lights condition focusing on:
+- Lens clarity and condition
+- Housing integrity
+- Visible damage or cracks
+- Signs of moisture/condensation`,
+        
+        compartments: `Analyze compartment condition focusing on:
+- Door/hatch functionality
+- Seal condition
+- Interior cleanliness
+- Hinge and latch condition`
     };
 
-    return `${basePrompt}\n\n${specificPrompts[item.id] || ''}`;
+    const basePrompt = `Provide a concise, professional analysis of the ${item.name.en.toLowerCase()}. 
+Focus only on observable physical condition. Format response as:
+- Current Status
+- Key Issues (if any)
+No recommendations or additional commentary needed.`;
+
+    return `${basePrompt}\n\n${itemPrompts[item.id] || ''}`;
 }
 /*async function openCamera() {
     const item = inspectionItems[currentIndex];
@@ -2426,29 +2462,37 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
     }
 }
 
+// Replace the existing processAIResponse function
 function processAIResponse(aiResponse, item) {
-    // Process the AI's natural language response into structured data
     const conditions = {
-        critical: ['crítico', 'severo', 'urgente', 'roto', 'peligroso'],
-        warning: ['desgaste', 'deterioro', 'atención', 'moderado'],
-        ok: ['bueno', 'óptimo', 'excelente', 'normal']
+        critical: ['crítico', 'severo', 'urgente', 'roto', 'peligroso', 'ponchado', 'inutilizable'],
+        warning: ['desgaste', 'deterioro', 'atención', 'moderado', 'sucio', 'obstruido'],
+        ok: ['bueno', 'óptimo', 'excelente', 'normal', 'adecuado']
     };
 
     return aiResponse.map(response => {
         const responseLower = response.details.toLowerCase();
         let status = 'ok';
 
-        // Determine status based on keywords
         if (conditions.critical.some(word => responseLower.includes(word))) {
             status = 'critical';
         } else if (conditions.warning.some(word => responseLower.includes(word))) {
             status = 'warning';
         }
 
+        // Clean up response text to remove any informal language
+        let details = response.details
+            .replace(/claro,?\s*/i, '')
+            .replace(/aquí tienes\s*/i, '')
+            .replace(/lo siento,?\s*/i, '')
+            .replace(/puedo\s+ofrecerte?\s*/i, '')
+            .split('.')[0] // Take only the first sentence for conciseness
+            .trim();
+
         return {
             status,
             issues: extractIssues(responseLower),
-            details: response.details
+            details: details.charAt(0).toUpperCase() + details.slice(1) // Capitalize first letter
         };
     });
 }
