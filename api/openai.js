@@ -99,60 +99,6 @@ export default async function handler(req, res) {
     }
 }
 
-// 🔹 Función que analiza la respuesta de OpenAI y la categoriza
-function processAIAnalysis(description, prompt) {
-    const conditions = {
-        tires: {
-            statuses: ["Óptimo", "Desgaste normal", "Desgaste avanzado", "Desinflado", "Ponchado", "Crítico"],
-            issues: ["Sin problemas", "Presión baja", "Desgaste irregular", "Desgaste en bordes", "Grietas", "Objeto punzante", "Deformación"]
-        },
-        mirrors: {
-            statuses: ["Óptimo", "Funcional", "Dañado", "Crítico"],
-            issues: ["Sin problemas", "Rayones menores", "Rajadura", "Desajustado", "Visibilidad reducida", "Roto"]
-        },
-        license_plates: {
-            statuses: ["Óptimo", "Legible", "Parcialmente legible", "Ilegible"],
-            issues: ["Sin problemas", "Suciedad", "Decoloración", "Dobladura", "Daño físico", "Baja reflectividad"]
-        },
-        headlights: {
-            statuses: ["Óptimo", "Funcional", "Deteriorado", "No funcional"],
-            issues: ["Sin problemas", "Opacidad", "Humedad", "Grietas", "Bajo brillo", "Daño estructural"]
-        },
-        cleanliness: {
-            statuses: ["Excelente", "Aceptable", "Requiere limpieza", "Inaceptable"],
-            issues: ["Sin problemas", "Polvo", "Manchas", "Suciedad excesiva", "Residuos"]
-        },
-        scratches: {
-            statuses: ["Sin daños", "Daños menores", "Daños moderados", "Daños severos"],
-            issues: ["Sin problemas", "Rayones superficiales", "Rayones profundos", "Abolladuras", "Pintura dañada"]
-        }
-    };
-
-    // Determinar el tipo de componente
-    const componentType = getComponentType(prompt);
-    const validConditions = conditions[componentType] || conditions.general;
-
-    let status = "Óptimo";
-    let detectedIssues = [];
-
-    // Analizar el texto y categorizar la información
-    validConditions.statuses.forEach(s => {
-        if (description.toLowerCase().includes(s.toLowerCase())) {
-            status = s;
-        }
-    });
-
-    validConditions.issues.forEach(issue => {
-        if (description.toLowerCase().includes(issue.toLowerCase())) {
-            detectedIssues.push(issue);
-        }
-    });
-
-    return {
-        status,
-        issues: detectedIssues.length > 0 ? detectedIssues : ["Sin problemas"]
-    };
-}
 
 // 🔹 Función para determinar el tipo de componente según el prompt
 function getComponentType(prompt) {
