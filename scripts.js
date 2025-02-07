@@ -285,7 +285,7 @@ async function login() {
         document.querySelectorAll('.modal').forEach(modal => {
             modal.style.display = 'none';
         });
-
+	//Codigo Propiedad de Datagora.
         // Ocultar pantallas actuales
         document.querySelectorAll('.screen').forEach(screen => {
             screen.style.display = 'none';
@@ -432,7 +432,7 @@ function updateLanguage() {
             span.style.display = 'none';
         }
     });
-
+    //Codigo Propiedad de Datagora.
     // Manejar las traducciones para el elemento de inspección actual
     if (currentIndex !== undefined && inspectionItems[currentIndex]) {
         const item = inspectionItems[currentIndex];
@@ -664,6 +664,7 @@ const SessionManager = {
         document.removeEventListener('keypress', SessionManager.resetTimer);
     }
 };
+//Codigo Propiedad de Datagora.
 //Loading states
 function setLoadingState(isLoading, elementId) {
     const element = document.getElementById(elementId);
@@ -834,7 +835,7 @@ async function nextItem() {
         const aiResults = await analyzePhotoWithOpenAI(currentPhotos, item.name.es);
 
         console.log(`Resultados de IA para ${item.name[currentLanguage]}:`, aiResults);
-
+	//Codigo Propiedad de Datagora.
         // Store each photo's analysis separately
         const photoAnalyses = aiResults.map((result, idx) => ({
             photoIndex: idx + 1,
@@ -859,65 +860,6 @@ async function nextItem() {
 
     advanceToNextItem();
 }
-/*async function nextItem() {
-    console.log('nextItem fue llamado');
-    if (!checkRequirements()) {
-        return;
-    }
-
-    const item = inspectionItems[currentIndex];
-    const requiredPhotos = item.requiredPhotos ?? 1;
-    const currentPhotos = currentInspectionData[item.id]?.photos || [];
-    const comment = document.getElementById('commentBox')?.value.trim() || '';
-
-    if (requiredPhotos === 0) {
-        console.log(`El ítem "${item.name[currentLanguage]}" no requiere fotos, avanzando...`);
-        currentInspectionData[item.id] = {
-            ...currentInspectionData[item.id],
-            comment: comment,
-            status: 'No requiere evaluación',
-            issues: [],
-            aiComment: 'No se requiere análisis de IA para este ítem.'
-        };
-        cleanupMemory();
-        advanceToNextItem();
-        return;
-    }
-
-    if (currentPhotos.length < requiredPhotos) {
-        const missingPhotos = requiredPhotos - currentPhotos.length;
-        showNotification(`Faltan ${missingPhotos} fotos para completar este ítem.`, 'error');
-        return;
-    }
-
-    // 🔹 Obtener análisis de OpenAI
-    try {
-        showNotification('Analizando imágenes con OpenAI...', 'info');
-        const aiResults = await analyzePhotoWithOpenAI(currentPhotos, item.name.es);
-
-        console.log(`Resultados de IA para ${item.name[currentLanguage]}:`, aiResults);
-
-        currentInspectionData[item.id] = {
-            ...currentInspectionData[item.id],
-            comment: comment,
-            status: aiResults[0]?.status || 'No determinado',
-            issues: aiResults[0]?.issues || [],
-            aiComment: aiResults[0]?.details || 'No se pudo obtener información de IA.',
-            timestamp: new Date().toISOString()
-        };
-
-        showNotification('Análisis de OpenAI completado.');
-    } catch (error) {
-        console.error('Error al procesar con OpenAI:', error);
-        showNotification('Error al procesar las imágenes con OpenAI.', 'error');
-        currentInspectionData[item.id].aiComment = 'Error al procesar las imágenes con OpenAI.';
-    }
-
-    // Avanzar al siguiente ítem
-    advanceToNextItem();
-}*/
-
-
 
 function advanceToNextItem() {
     if (currentIndex < inspectionItems.length - 1) {
@@ -1023,7 +965,7 @@ async function generateInspectionPDF(inspection) {
             doc.text(`Status: ${itemData.status.toUpperCase()}`, 20, y);
             doc.setTextColor(0, 0, 0);
             y += 10;
-
+		//Codigo Propiedad de Datagora.
             // AI Analysis
 		 if (itemData.photoAnalyses && itemData.photoAnalyses.length > 0) {
                 itemData.photoAnalyses.forEach((analysis, index) => {
@@ -1566,7 +1508,7 @@ async function fetchInspectionRecords(workerId, isAdmin = false) {
     throw error; // Lanza el error para manejarlo en niveles superiores si es necesario
   }
 }
-
+//Codigo Propiedad de Datagora.
 // Function to display records
 async function displayRecords(page = 1) {
     const recordsContainer = document.getElementById('recordsContainer');
@@ -1956,93 +1898,7 @@ async function analyzePhotoWithOpenAI(photos, itemName) {
         }
     }
 }
-/*async function analyzePhotoWithOpenAI(photos, itemName) {
-    const item = inspectionItems[currentIndex];
-    const prompt = generateAIPrompt(item);
-    let overlay = null;
-
-    try {
-        // Create overlay
-        overlay = document.createElement('div');
-        overlay.className = 'processing-overlay';
-        overlay.innerHTML = `
-            <div class="processing-message">
-                <div class="loading-spinner"></div>
-                <p>Analizando imagen con IA...</p>
-            </div>
-        `;
-
-        // Add overlay to document
-        if (document.body) {
-            document.body.appendChild(overlay);
-            document.body.style.overflow = 'hidden';
-        }
-
-        showNotification('Analizando imágenes...', 'info');
-
-        // Log the request data
-        console.log('Sending analysis request:', {
-            prompt,
-            photosCount: photos.length,
-            itemType: item.id
-        });
-
-        const response = await fetch('/api/openai', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                prompt,
-                images: photos,
-                itemType: item.id
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Error en API: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('API Response:', data);
-
-        if (!data.results || !data.results[0]) {
-            throw new Error('Respuesta de IA incompleta');
-        }
-
-        const result = data.results[0];
-        console.log('Processing result:', result);
-
-        // Process the AI response
-        const analysis = {
-            status: result.status || 'undefined',
-            issues: Array.isArray(result.issues) ? result.issues : [],
-            details: result.details || 'No se proporcionaron detalles'
-        };
-
-        console.log('Final analysis:', analysis);
-        return [analysis];
-
-    } catch (error) {
-        console.error('Error en análisis:', error);
-        showNotification('Error en análisis de imágenes', 'error');
-        return [{
-            status: 'error',
-            issues: ['Error en análisis'],
-            details: error.message || 'No se pudo obtener información de IA'
-        }];
-    } finally {
-        // Cleanup: remove overlay and restore scrolling
-        try {
-            if (overlay && overlay.parentNode) {
-                overlay.parentNode.removeChild(overlay);
-            }
-            if (document.body) {
-                document.body.style.overflow = '';
-            }
-        } catch (cleanupError) {
-            console.error('Error cleaning up overlay:', cleanupError);
-        }
-    }
-}*/
+//Codigo Propiedad de Datagora.
 // 🔹 Función que analiza la respuesta de OpenAI y la categoriza
 function processAIAnalysis(description, prompt) {
     const conditions = {
@@ -2201,7 +2057,7 @@ function updateRecentInspections() {
         tableBody.appendChild(row);
     });
 }
-
+//Codigo Propiedad de Datagora.
 // User Management Functions
 async function showUserManagement() {
     toggleSidebar();
@@ -2280,7 +2136,7 @@ async function displayUsers() {
             tableBody.appendChild(row);
         });
 
-        // ✅ Asegurar que los botones de edición tengan el evento correcto
+        // Asegurar que los botones de edición tengan el evento correcto
         document.querySelectorAll('.edit-user-btn').forEach(button => {
             button.addEventListener('click', function () {
                 let userId = this.getAttribute('data-user-id'); // Obtener el ID correcto
@@ -2373,7 +2229,7 @@ function updateMetricsDisplay() {
     const averageCondition = fleetConditions.length > 0
         ? fleetConditions.reduce((acc, curr) => acc + curr, 0) / fleetConditions.length
         : 0;
-    
+    //Codigo Propiedad de Datagora.
     // Calcular tiempo promedio de inspección
     const timesWithDuration = records.filter(record => record.duration);
     const averageTime = timesWithDuration.length > 0
@@ -2442,7 +2298,7 @@ function updateMetricsDisplay() {
     createChart('inspectorPerformanceChart', 'bar', performanceData.labels, performanceData.data, { label: 'Performance Score', borderRadius: 6, legend: false, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: value => value + '%' } } } });
     createChart('fleetConditionChart', 'line', records.map(r => new Date(r.date).toLocaleDateString()), fleetConditions, { label: 'Vehicle Condition %', borderColor: '#3b82f6', tension: 0.1, scales: { y: { beginAtZero: true, max: 100, ticks: { callback: value => value + '%' } } } });
 }
-
+//Codigo Propiedad de Datagora.
 //funcion para mostrar y seleccionar los records basandome en el usuario
 async function displayRecords(page = 1) {
     const recordsContainer = document.getElementById('recordsContainer');
@@ -2554,7 +2410,7 @@ async function displayRecords(page = 1) {
 
             recordsContainer.appendChild(recordItem);
         });
-
+	//Codigo Propiedad de Datagora.
         // Actualizar controles de paginación
         const pageInfo = document.getElementById('pageInfo');
         const prevPage = document.getElementById('prevPage');
@@ -2643,7 +2499,7 @@ async function editUser(userId) {
     }
 }
 
-
+//Codigo Propiedad de Datagora.
 //Funcion para crear usuarios a la base de datos
 async function handleUserSubmit(event) {
     event.preventDefault();
@@ -2762,6 +2618,7 @@ function backToLogin() {
         localStorage.removeItem('currentWorker');
     }
 }
+//Codigo Propiedad de Datagora.
 // Initialize records screen events
 document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('recordSearchInput');
@@ -2899,7 +2756,7 @@ function setupTouchHandling() {
             element.click();
         });
     });
-
+    //Codigo Propiedad de Datagora.
     // Add passive touch handlers
     document.addEventListener('touchstart', () => {}, { passive: true });
     document.addEventListener('touchmove', () => {}, { passive: true });
@@ -3084,4 +2941,49 @@ Object.assign(window, {
     handleImageProcessing,
     updatePhotoPreview
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
