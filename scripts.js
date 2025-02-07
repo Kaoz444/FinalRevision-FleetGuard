@@ -3,7 +3,6 @@ const MAX_PHOTOS_PER_ITEM = 3;
 const MAX_PHOTO_SIZE = 5 * 1024 * 1024;
 const recordsPerPage = 10;
 
-
 let currentLanguage = 'es';
 let currentTheme = 'light';
 let currentWorker = null;
