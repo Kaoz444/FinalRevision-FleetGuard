@@ -2422,42 +2422,6 @@ async function resizeImage(file, maxWidth = 1280, maxHeight = 960, quality = 0.7
         reader.readAsDataURL(file);
     });
 }*/
-
-async function analyzePhotoWithOpenAI(photos, itemName) {
-    const item = inspectionItems[currentIndex];
-    const prompt = generateAIPrompt(item);
-
-    try {
-        showNotification('Analizando imágenes...', 'info');
-
-        const response = await fetch('/api/openai', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                prompt,
-                images: photos,
-                itemType: item.id
-            })
-        });
-
-        if (!response.ok) {
-            throw new Error(`Error en API: ${response.status}`);
-        }
-
-        const data = await response.json();
-        return processAIResponse(data.results, item);
-
-    } catch (error) {
-        console.error('Error en análisis:', error);
-        showNotification('Error en análisis de imágenes', 'error');
-        return [{
-            status: 'error',
-            issues: ['Error en análisis'],
-            details: error.message
-        }];
-    }
-}
-
 // Replace the existing processAIResponse function
 async function analyzePhotoWithOpenAI(photos, itemName) {
     const item = inspectionItems[currentIndex];
