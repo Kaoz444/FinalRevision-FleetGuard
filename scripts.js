@@ -1120,7 +1120,7 @@ async function generateInspectionPDF(inspection) {
                         doc.text(`Error loading photo ${photoIndex + 1}`, 20, y + 30);
                     }
 
-                    y += requiredHeight + 15;
+                    y += photoHeight + 15;
                 });
             }
 
