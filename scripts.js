@@ -976,26 +976,50 @@ async function generateInspectionPDF(inspection) {
                 y = 45;
             }
 
-            // Add section header for each item
-            y = addSectionHeader(item.name[currentLanguage], y);
+		// Add extra space before new section
+		y += 30;
+		
+		// Check if we need a new page before the section header
+		if (y > doc.internal.pageSize.getHeight() - 60) {
+		    doc.addPage();
+		    addHeader();
+		    y = 45;
+		}
+		
+		// Add section header for each item
+		y = addSectionHeader(item.name[currentLanguage], y);
+		
+		// Add space after section header
+		y += 15;
+		
+		// Inspector Comments
+		if (itemData.comment) {
+		    doc.setFont('helvetica', 'bold');
+		    doc.setFontSize(11);
+		    doc.text('Inspector Comments:', 20, y);
+		    doc.setFont('helvetica', 'normal');
+		    const commentLines = doc.splitTextToSize(itemData.comment, 170);
+		    doc.text(commentLines, 25, y + 7);
+		    y += commentLines.length * 7 + 20;
+		}
 
-            // Inspector Comments
-            if (itemData.comment) {
-                doc.setFont('helvetica', 'bold');
-                doc.setFontSize(11);
-                doc.text('Inspector Comments:', 20, y);
-                doc.setFont('helvetica', 'normal');
-                const commentLines = doc.splitTextToSize(itemData.comment, 170);
-                doc.text(commentLines, 25, y + 7);
-                y += commentLines.length * 7 + 15;
-            }
-
-            // Handle multiple photos and their analyses
-            if (itemData.photos && itemData.photos.length > 0) {
-                const photoWidth = 80;
-                const photoHeight = 60;
-
-                itemData.photos.forEach((photo, photoIndex) => {
+		// Handle multiple photos and their analyses
+		if (itemData.photos && itemData.photos.length > 0) {
+		    const photoWidth = 80;
+		    const photoHeight = 60;
+		
+		    itemData.photos.forEach((photo, photoIndex) => {
+		        // Add extra space between photos
+		        if (photoIndex > 0) {
+		            y += 30;
+		        }
+		
+		        // Check if we need a new page before the photo and analysis
+		        if (y + photoHeight + 100 > doc.internal.pageSize.getHeight()) {
+		            doc.addPage();
+		            addHeader();
+		            y = 45;
+		        }
                     // New page if needed
                     if (y + photoHeight + 60 > doc.internal.pageSize.getHeight()) {
                         doc.addPage();
@@ -1125,7 +1149,11 @@ async function generateInspectionPDF(inspection) {
                         doc.text(`Error loading photo ${photoIndex + 1}`, 20, y + 30);
                     }
 
-                    y += photoHeight + 30;
+                    y += photoHeight + 40;
+		 // If this is the last photo of the section, add extra space
+			if (photoIndex === itemData.photos.length - 1) {
+			    y += 20;
+			}
                 });
             }
 
