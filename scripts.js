@@ -1011,47 +1011,58 @@ async function generateInspectionPDF(inspection) {
                         doc.addImage(photo, 'JPEG', 20, y + 5, photoWidth, photoHeight);
                         
                         // Add analysis next to the photo
-                        if (itemData.photoAnalyses && itemData.photoAnalyses[photoIndex]) {
-                            const analysis = itemData.photoAnalyses[photoIndex];
-                            const textX = photoWidth + 30;
-                            let textY = y + 15;
-
-                            // Analysis header
-                            doc.setFont('helvetica', 'bold');
-                            doc.setFontSize(12);
-                            doc.text(`Analysis for Photo ${photoIndex + 1}`, textX, textY);
-                            textY += 10;
-
-                            // Status with color coding
-                            doc.setFontSize(11);
-                            const statusColor = analysis.status.toLowerCase().includes('crítico') ? '#ef4444' : 
-                                              analysis.status.toLowerCase().includes('avanzado') ? '#f59e0b' : '#10b981';
-                            doc.setTextColor(...hexToRGB(statusColor));
-                            doc.text(`Status: ${analysis.status}`, textX, textY);
-                            doc.setTextColor(0, 0, 0);
-                            textY += 10;
-
-                            // Issues
-                            if (analysis.issues && analysis.issues.length > 0) {
-                                doc.setFont('helvetica', 'bold');
-                                doc.text('Issues detected:', textX, textY);
-                                textY += 7;
-                                doc.setFont('helvetica', 'normal');
-                                analysis.issues.forEach(issue => {
-                                    doc.text(`• ${issue}`, textX + 5, textY);
-                                    textY += 7;
-                                });
-                            }
-
-                            // Technical details
-                            if (analysis.details) {
-                                textY += 3;
-                                doc.setFont('helvetica', 'italic');
-                                const detailLines = doc.splitTextToSize(analysis.details, 90);
-                                doc.text(detailLines, textX, textY);
-                                textY += detailLines.length * 7;
-                            }
-                        }
+				if (itemData.photoAnalyses && itemData.photoAnalyses[photoIndex]) {
+				    const analysis = itemData.photoAnalyses[photoIndex];
+				    const textX = photoWidth + 30;
+				    let textY = y + 15;
+				    const maxWidth = doc.internal.pageSize.getWidth() - textX - 20; // Leave 20pt margin
+				
+				    // Analysis header
+				    doc.setFont('helvetica', 'bold');
+				    doc.setFontSize(12);
+				    doc.text(`Analysis for Photo ${photoIndex + 1}`, textX, textY);
+				    textY += 10;
+				
+				    // Status with color coding
+				    doc.setFontSize(11);
+				    const statusColor = analysis.status.toLowerCase().includes('crítico') ? '#ef4444' : 
+				                      analysis.status.toLowerCase().includes('avanzado') ? '#f59e0b' : '#10b981';
+				    doc.setTextColor(...hexToRGB(statusColor));
+				    doc.text(`Status: ${analysis.status}`, textX, textY);
+				    doc.setTextColor(0, 0, 0);
+				    textY += 10;
+				
+				    // Issues
+				    if (analysis.issues && analysis.issues.length > 0) {
+				        doc.setFont('helvetica', 'bold');
+				        doc.text('Issues detected:', textX, textY);
+				        textY += 7;
+				        doc.setFont('helvetica', 'normal');
+				        analysis.issues.forEach(issue => {
+				            const lines = doc.splitTextToSize(`• ${issue}`, maxWidth);
+				            lines.forEach(line => {
+				                doc.text(line, textX + 5, textY);
+				                textY += 7;
+				            });
+				        });
+				    }
+				
+				    // Technical details with word wrap
+				    if (analysis.details) {
+				        textY += 3;
+				        doc.setFont('helvetica', 'italic');
+				        const detailLines = doc.splitTextToSize(analysis.details, maxWidth);
+				        detailLines.forEach(line => {
+				            // Check if we need a new page
+				            if (textY > doc.internal.pageSize.getHeight() - 20) {
+				                doc.addPage();
+				                textY = 20;
+				            }
+				            doc.text(line, textX, textY);
+				            textY += 7;
+				        });
+				    }
+				}
 
                     } catch (error) {
                         console.error(`Error adding photo ${photoIndex + 1}:`, error);
